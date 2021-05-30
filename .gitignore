@@ -1,4 +1,7 @@
+.vscode
 build
 debuggers
+gitpush.sh
 roms
 yobeboy
+yobemag-debug

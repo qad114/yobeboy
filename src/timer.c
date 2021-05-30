@@ -16,7 +16,7 @@ void TIMER_update(CPU* cpu, Memory* mem, Timer* timer) {
     }
 
     // Update TIMA
-    /*if (!((MEM_getByte(mem, REG_TAC) & 0b100) >> 2)) {
+    if (!((MEM_getByte(mem, REG_TAC) & 0b100) >> 2)) {
         timer->timaCounter = 0;
         MEM_setByte(mem, REG_TIMA, 0);
         return;
@@ -36,7 +36,7 @@ void TIMER_update(CPU* cpu, Memory* mem, Timer* timer) {
         updateTima(cpu, mem, timer);
     } else {
         ++(timer->timaCounter);
-    }*/
+    }
 }
 
 void updateDiv(CPU* cpu, Memory* mem, Timer* timer) {

@@ -17,6 +17,8 @@ static uint8_t getColorByte(int color) {
         case 1: return 0xC2;
         case 2: return 0x40;
         case 3: return 0x00;
+        default: return 0x00;
+
     }
 }
 
@@ -215,11 +217,12 @@ static void renderObjects(GPU* gpu, Memory* mem) {
             int offset = (yPos * 4 * 160) + ((rowIndex / 2) * 4 * 160) + (xPos * 4);
             for (int i = 0; i < 8; ++i) {
                 if (pixels[i] == 0) continue;
-                int color = getColorNumber(mem, pixels[i], (flags & 0b00010000) >> 4 ? REG_OBP1 : REG_OBP0);
+                if (xPos > 159) continue;
                 int pos = offset + (i * 4);
-                if (pos < 0) continue;
+                if (pos < 0 || pos >= (160 * 144 * 4)) continue;
+                int color = getColorNumber(mem, pixels[i], (flags & 0b00010000) >> 4 ? REG_OBP1 : REG_OBP0);
                 memset(gpu->framebuffer + pos, getColorByte(color), 3);
-                gpu->framebuffer[offset + (i * 4) + 3] = 0xFF;
+                gpu->framebuffer[pos + 3] = 0xFF;
             }
 
             rowIndex += (yFlip ? -2 : 2);

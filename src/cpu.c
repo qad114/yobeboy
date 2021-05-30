@@ -2585,7 +2585,6 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
     //printf("%x\n", MEM_getByte(mem, REG_DIV));
 
     // Update the joypad register (temporary, move to joypad)
-    uint8_t JOYP = MEM_getByte(mem, REG_JOYP);
     MEM_setByte(mem, REG_JOYP, MEM_getByte(mem, REG_JOYP) | 0b11001111);
 
     if (!((MEM_getByte(mem, REG_JOYP) & 0b00100000) >> 5)) {

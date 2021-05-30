@@ -49,6 +49,12 @@ void MEM_init(Memory* mem) {
     mem->ioRegisters[REG_BGP  - OFFSET_IOREGISTERS]  = 0xFC;
     mem->ioRegisters[REG_OBP0 - OFFSET_IOREGISTERS] = 0xFF;
     mem->ioRegisters[REG_OBP1 - OFFSET_IOREGISTERS] = 0xFF;
+
+    // Initialize other variables
+    mem->battery = 0;
+    mem->dmaAddressUpper = 0;
+    mem->dmaInProgress = 0;
+    mem->dmaPosition = 0;
 }
 
 uint8_t MEM_getByte(Memory* mem, uint16_t address) {

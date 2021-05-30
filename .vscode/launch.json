@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/yobemag-debug",
-            "args": ["${workspaceFolder}/smland.gb"],
+            "args": ["${workspaceFolder}/roms/smland.gb"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
