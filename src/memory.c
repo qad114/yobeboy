@@ -172,11 +172,8 @@ void MEM_loadROM(Memory* mem, const char* path) {
         sprintf(saveFileName, "%s.sav", path);
         FILE* saveFile = fopen(saveFileName, "rb");
         if (saveFile != NULL) {
-            uint8_t c;
-            for (int i = 0; i < (mem->extRamBanksNo * 0x2000); ++i) {
-                c = fgetc(file);
-                mem->extRamBanks[i] = c;
-            }
+            filesize = mem->extRamBanksNo * 0x2000;
+            assert(fread(mem->extRamBanks, 1, filesize, saveFile) == filesize);
             fclose(saveFile);
         }
     } else {

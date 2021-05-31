@@ -9,14 +9,7 @@
 #include "memory.h"
 #include "timer.h"
 
-#define REG16_AF &(cpu->A), &(cpu->F)
-#define REG16_BC &(cpu->B), &(cpu->C)
-#define REG16_DE &(cpu->D), &(cpu->E)
-#define REG16_HL &(cpu->H), &(cpu->L)
-#define REG16_SP (((uint8_t *)&(cpu->SP)) + 1), ((uint8_t *)&(cpu->SP))
-
 int mCycleTimer = 0;
-long mCycleCount = 1;
 
 int CPU_getFlagZ(CPU* cpu) { return (cpu->F & 0b10000000) >> 7; }
 int CPU_getFlagN(CPU* cpu) { return (cpu->F & 0b01000000) >> 6; }
@@ -55,12 +48,6 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
     }
     #endif
 
-    /*if (mCycleTimer > 0) {
-        --mCycleTimer;
-        ++mCycleCount;
-        return 1;
-    }*/
-
     if (mCycleTimer > 0) {
         --mCycleTimer;
     } else {
@@ -70,17 +57,17 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0x01: // LD BC, nn (12)
-                ASM_LD_n_nn(cpu, mem, REG16_BC);
+                ASM_LD_n_nn(cpu, mem, &(cpu->BC));
                 mCycleTimer = 2;
                 break;
 
             case 0x02: // LD (BC), A (8)
-                ASM_LD_m_A(cpu, mem, (cpu->B << 8) | cpu->C);
+                ASM_LD_m_A(cpu, mem, cpu->BC);
                 mCycleTimer = 1;
                 break;
 
             case 0x03: // INC BC (8)
-                ASM_INC_nn(cpu, REG16_BC);
+                ASM_INC_nn(cpu, &(cpu->BC));
                 mCycleTimer = 1;
                 break;
 
@@ -107,17 +94,17 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0x09: // ADD HL, BC (8)
-                ASM_ADD_HL_n(cpu, REG16_BC);
+                ASM_ADD_HL_n(cpu, &(cpu->BC));
                 mCycleTimer = 1;
                 break;
 
             case 0x0A: // LD A, (BC) (8)
-                ASM_LD_A_m(cpu, mem, (cpu->B << 8) | cpu->C);
+                ASM_LD_A_m(cpu, mem, cpu->BC);
                 mCycleTimer = 1;
                 break;
 
             case 0x0B: // DEC BC (8)
-                ASM_DEC_nn(cpu, REG16_BC);
+                ASM_DEC_nn(cpu, &(cpu->BC));
                 mCycleTimer = 1;
                 break;
 
@@ -152,17 +139,17 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0x11: // LD DE, nn (12)
-                ASM_LD_n_nn(cpu, mem, REG16_DE);
+                ASM_LD_n_nn(cpu, mem, &(cpu->DE));
                 mCycleTimer = 2;
                 break;
 
             case 0x12: // LD (DE), A (8)
-                ASM_LD_m_A(cpu, mem, (cpu->D << 8) | cpu->E);
+                ASM_LD_m_A(cpu, mem, cpu->DE);
                 mCycleTimer = 1;
                 break;
 
             case 0x13: // INC DE (8)
-                ASM_INC_nn(cpu, REG16_DE);
+                ASM_INC_nn(cpu, &(cpu->DE));
                 mCycleTimer = 1;
                 break;
 
@@ -189,17 +176,17 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0x19: // ADD HL, DE (8)
-                ASM_ADD_HL_n(cpu, REG16_DE);
+                ASM_ADD_HL_n(cpu, &(cpu->DE));
                 mCycleTimer = 1;
                 break;
 
             case 0x1A: // LD A, (DE) (8)
-                ASM_LD_A_m(cpu, mem, (cpu->D << 8) | cpu->E);
+                ASM_LD_A_m(cpu, mem, cpu->DE);
                 mCycleTimer = 1;
                 break;
 
             case 0x1B: // DEC DE (8)
-                ASM_DEC_nn(cpu, REG16_DE);
+                ASM_DEC_nn(cpu, &(cpu->DE));
                 mCycleTimer = 1;
                 break;
 
@@ -231,7 +218,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0x21: // LD HL, nn (12)
-                ASM_LD_n_nn(cpu, mem, REG16_HL);
+                ASM_LD_n_nn(cpu, mem, &(cpu->HL));
                 mCycleTimer = 2;
                 break;
 
@@ -241,7 +228,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0x23: // INC HL (8)
-                ASM_INC_nn(cpu, REG16_HL);
+                ASM_INC_nn(cpu, &(cpu->HL));
                 mCycleTimer = 1;
                 break;
 
@@ -272,7 +259,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0x29: // ADD HL, HL (8)
-                ASM_ADD_HL_n(cpu, REG16_HL);
+                ASM_ADD_HL_n(cpu, &(cpu->HL));
                 mCycleTimer = 1;
                 break;
 
@@ -282,7 +269,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0x2B: // DEC HL (8)
-                ASM_DEC_nn(cpu, REG16_HL);
+                ASM_DEC_nn(cpu, &(cpu->HL));
                 mCycleTimer = 1;
                 break;
 
@@ -312,7 +299,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0x31: // LD SP, nn (12)
-                ASM_LD_n_nn(cpu, mem, REG16_SP);
+                ASM_LD_n_nn(cpu, mem, &(cpu->SP));
                 mCycleTimer = 2;
                 break;
 
@@ -322,22 +309,22 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0x33: // INC SP (8)
-                ASM_INC_nn(cpu, REG16_SP);
+                ASM_INC_nn(cpu, &(cpu->SP));
                 mCycleTimer = 1;
                 break;
 
             case 0x34: // INC (HL) (12)
-                ASM_INC_m(cpu, mem, (cpu->H << 8) | cpu->L);
+                ASM_INC_m(cpu, mem, cpu->HL);
                 mCycleTimer = 2;
                 break;
 
             case 0x35: // DEC (HL) (12)
-                ASM_DEC_m(cpu, mem, (cpu->H << 8) | cpu->L);
+                ASM_DEC_m(cpu, mem, cpu->HL);
                 mCycleTimer = 2;
                 break;
 
             case 0x36: // LD (HL), n (12)
-                ASM_LD_m1_m2(cpu, mem, (cpu->H << 8) | cpu->L, cpu->PC + 1);
+                ASM_LD_m1_m2(cpu, mem, cpu->HL, cpu->PC + 1);
                 cpu->PC += 1;
                 mCycleTimer = 2;
                 break;
@@ -357,19 +344,19 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0x39: // ADD HL, SP (8)
-                ASM_ADD_HL_n(cpu, REG16_SP);
+                ASM_ADD_HL_n(cpu, &(cpu->SP));
                 mCycleTimer = 1;
                 break;
 
             case 0x3A: // LDD A, (HL) (8)
-                ASM_LD_A_m(cpu, mem, (cpu->H << 8) | cpu->L);
-                ASM_DEC_nn(cpu, REG16_HL);
+                ASM_LD_A_m(cpu, mem, cpu->HL);
+                ASM_DEC_nn(cpu, &(cpu->HL));
                 cpu->PC -= 1; // TODO: Stop being lazy
                 mCycleTimer = 1;
                 break;
 
             case 0x3B: // DEC SP (8)
-                ASM_DEC_nn(cpu, REG16_SP);
+                ASM_DEC_nn(cpu, &(cpu->SP));
                 mCycleTimer = 1;
                 break;
 
@@ -416,7 +403,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0x46: // LD B, (HL) (8)
-                ASM_LD_r1_m(cpu, mem, &(cpu->B), (cpu->H << 8) | cpu->L);
+                ASM_LD_r1_m(cpu, mem, &(cpu->B), cpu->HL);
                 mCycleTimer = 1;
                 break;
 
@@ -449,7 +436,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0x4E: // LD C, (HL) (8)
-                ASM_LD_r1_m(cpu, mem, &(cpu->C), (cpu->H << 8) | cpu->L);
+                ASM_LD_r1_m(cpu, mem, &(cpu->C), cpu->HL);
                 mCycleTimer = 1;
                 break;
 
@@ -482,7 +469,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0x56: // LD D, (HL) (8)
-                ASM_LD_r1_m(cpu, mem, &(cpu->D), (cpu->H << 8) | cpu->L);
+                ASM_LD_r1_m(cpu, mem, &(cpu->D), cpu->HL);
                 mCycleTimer = 1;
                 break;
 
@@ -515,7 +502,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0x5E: // LD E, (HL) (8)
-                ASM_LD_r1_m(cpu, mem, &(cpu->E), (cpu->H << 8) | cpu->L);
+                ASM_LD_r1_m(cpu, mem, &(cpu->E), cpu->HL);
                 mCycleTimer = 1;
                 break;
 
@@ -548,7 +535,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0x66: // LD H, (HL) (8)
-                ASM_LD_r1_m(cpu, mem, &(cpu->H), (cpu->H << 8) | cpu->L);
+                ASM_LD_r1_m(cpu, mem, &(cpu->H), cpu->HL);
                 mCycleTimer = 1;
                 break;
 
@@ -581,7 +568,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0x6E: // LD L, (HL) (8)
-                ASM_LD_r1_m(cpu, mem, &(cpu->L), (cpu->H << 8) | cpu->L);
+                ASM_LD_r1_m(cpu, mem, &(cpu->L), cpu->HL);
                 mCycleTimer = 1;
                 break;
 
@@ -590,32 +577,32 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0x70: // LD (HL), B (8)
-                ASM_LD_m_r2(cpu, mem, (cpu->H << 8) | cpu->L, &(cpu->B));
+                ASM_LD_m_r2(cpu, mem, cpu->HL, &(cpu->B));
                 mCycleTimer = 1;
                 break;
 
             case 0x71: // LD (HL), C (8)
-                ASM_LD_m_r2(cpu, mem, (cpu->H << 8) | cpu->L, &(cpu->C));
+                ASM_LD_m_r2(cpu, mem, cpu->HL, &(cpu->C));
                 mCycleTimer = 1;
                 break;
 
             case 0x72: // LD (HL), D (8)
-                ASM_LD_m_r2(cpu, mem, (cpu->H << 8) | cpu->L, &(cpu->D));
+                ASM_LD_m_r2(cpu, mem, cpu->HL, &(cpu->D));
                 mCycleTimer = 1;
                 break;
 
             case 0x73: // LD (HL), E (8)
-                ASM_LD_m_r2(cpu, mem, (cpu->H << 8) | cpu->L, &(cpu->E));
+                ASM_LD_m_r2(cpu, mem, cpu->HL, &(cpu->E));
                 mCycleTimer = 1;
                 break;
 
             case 0x74: // LD (HL), H (8)
-                ASM_LD_m_r2(cpu, mem, (cpu->H << 8) | cpu->L, &(cpu->H));
+                ASM_LD_m_r2(cpu, mem, cpu->HL, &(cpu->H));
                 mCycleTimer = 1;
                 break;
 
             case 0x75: // LD (HL), L (8)
-                ASM_LD_m_r2(cpu, mem, (cpu->H << 8) | cpu->L, &(cpu->L));
+                ASM_LD_m_r2(cpu, mem, cpu->HL, &(cpu->L));
                 mCycleTimer = 1;
                 break;
 
@@ -626,7 +613,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0x77: // LD (HL), A (8)
-                ASM_LD_m_A(cpu, mem, (cpu->H << 8) | cpu->L);
+                ASM_LD_m_A(cpu, mem, cpu->HL);
                 mCycleTimer = 1;
                 break;
 
@@ -655,7 +642,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0x7E: // LD A, (HL) (8)
-                ASM_LD_A_m(cpu, mem, (cpu->H << 8) | cpu->L);
+                ASM_LD_A_m(cpu, mem, cpu->HL);
                 mCycleTimer = 1;
                 break;
 
@@ -688,7 +675,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0x86: // ADD A, (HL) (8)
-                ASM_ADD_A_m(cpu, mem, (cpu->H << 8) | cpu->L);
+                ASM_ADD_A_m(cpu, mem, cpu->HL);
                 mCycleTimer = 1;
                 break;
 
@@ -721,7 +708,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0x8E: // ADC A, (HL) (8)
-                ASM_ADC_A_m(cpu, mem, (cpu->H << 8) | cpu->L);
+                ASM_ADC_A_m(cpu, mem, cpu->HL);
                 mCycleTimer = 1;
                 break;
 
@@ -754,7 +741,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0x96: // SUB (HL) (8)
-                ASM_SUB_m(cpu, mem, (cpu->H << 8) | cpu->L);
+                ASM_SUB_m(cpu, mem, cpu->HL);
                 mCycleTimer = 1;
                 break;
 
@@ -787,7 +774,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0x9E: // SBC A, (HL) (8)
-                ASM_SBC_A_m(cpu, mem, (cpu->H << 8) | cpu->L);
+                ASM_SBC_A_m(cpu, mem, cpu->HL);
                 mCycleTimer = 1;
                 break;
 
@@ -820,7 +807,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0xA6: // AND (HL) (8)
-                ASM_AND_m(cpu, mem, (cpu->H << 8) | cpu->L);
+                ASM_AND_m(cpu, mem, cpu->HL);
                 mCycleTimer = 1;
                 break;
 
@@ -853,7 +840,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0xAE: // XOR (HL) (8)
-                ASM_XOR_m(cpu, mem, (cpu->H << 8) | cpu->L);
+                ASM_XOR_m(cpu, mem, cpu->HL);
                 mCycleTimer = 1;
                 break;
 
@@ -886,7 +873,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0xB6: // OR (HL) (8)
-                ASM_OR_m(cpu, mem, (cpu->H << 8) | cpu->L);
+                ASM_OR_m(cpu, mem, cpu->HL);
                 mCycleTimer = 1;
                 break;
 
@@ -919,7 +906,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0xBE: // CP (HL) (8)
-                ASM_CP_m(cpu, mem, (cpu->H << 8) | cpu->L);
+                ASM_CP_m(cpu, mem, cpu->HL);
                 mCycleTimer = 1;
                 break;
 
@@ -936,7 +923,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0xC1: // POP BC (12)
-                ASM_POP_nn(cpu, mem, REG16_BC);
+                ASM_POP_nn(cpu, mem, &(cpu->BC));
                 mCycleTimer = 2;
                 break;
 
@@ -962,7 +949,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0xC5: // PUSH BC (16)
-                ASM_PUSH_nn(cpu, mem, REG16_BC);
+                ASM_PUSH_nn(cpu, mem, &(cpu->BC));
                 mCycleTimer = 3;
                 break;
 
@@ -1031,7 +1018,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0xD1: // POP DE (12)
-                ASM_POP_nn(cpu, mem, REG16_DE);
+                ASM_POP_nn(cpu, mem, &(cpu->DE));
                 mCycleTimer = 2;
                 break;
 
@@ -1044,7 +1031,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0xD5: // PUSH DE (16)
-                ASM_PUSH_nn(cpu, mem, REG16_DE);
+                ASM_PUSH_nn(cpu, mem, &(cpu->DE));
                 mCycleTimer = 3;
                 break;
 
@@ -1106,7 +1093,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0xE1: // POP HL (12)
-                ASM_POP_nn(cpu, mem, REG16_HL);
+                ASM_POP_nn(cpu, mem, &(cpu->HL));
                 mCycleTimer = 2;
                 break;
 
@@ -1116,7 +1103,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0xE5: // PUSH HL (16)
-                ASM_PUSH_nn(cpu, mem, REG16_HL);
+                ASM_PUSH_nn(cpu, mem, &(cpu->HL));
                 mCycleTimer = 3;
                 break;
 
@@ -1163,7 +1150,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0xF1: // POP AF (12)
-                ASM_POP_nn(cpu, mem, REG16_AF);
+                ASM_POP_nn(cpu, mem, &(cpu->AF));
                 mCycleTimer = 2;
                 break;
 
@@ -1178,7 +1165,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0xF5: // PUSH AF (16)
-                ASM_PUSH_nn(cpu, mem, REG16_AF);
+                ASM_PUSH_nn(cpu, mem, &(cpu->AF));
                 mCycleTimer = 3;
                 break;
 
@@ -1258,7 +1245,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0x06: // RLC (HL) (16)
-                        ASM_RLC_m(cpu, mem, (cpu->H << 8) | cpu->L);
+                        ASM_RLC_m(cpu, mem, cpu->HL);
                         mCycleTimer = 3;
                         break;
 
@@ -1298,7 +1285,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0x0E: // RRC (HL) (16)
-                        ASM_RRC_m(cpu, mem, (cpu->H << 8) | cpu->L);
+                        ASM_RRC_m(cpu, mem, cpu->HL);
                         mCycleTimer = 3;
                         break;
 
@@ -1338,7 +1325,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0x16: // RL (HL) (16)
-                        ASM_RL_m(cpu, mem, (cpu->H << 8) | cpu->L);
+                        ASM_RL_m(cpu, mem, cpu->HL);
                         mCycleTimer = 3;
                         break;
 
@@ -1378,7 +1365,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0x1E: // RR (HL) (16)
-                        ASM_RR_m(cpu, mem, (cpu->H << 8) | cpu->L);
+                        ASM_RR_m(cpu, mem, cpu->HL);
                         mCycleTimer = 3;
                         break;
 
@@ -1418,7 +1405,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0x26: // SLA (HL) (16)
-                        ASM_SLA_m(cpu, mem, (cpu->H << 8) | cpu->L);
+                        ASM_SLA_m(cpu, mem, cpu->HL);
                         mCycleTimer = 3;
                         break;
 
@@ -1458,7 +1445,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0x2E: // SRA (HL) (16)
-                        ASM_SRA_m(cpu, mem, (cpu->H << 8) | cpu->L);
+                        ASM_SRA_m(cpu, mem, cpu->HL);
                         mCycleTimer = 3;
                         break;
 
@@ -1498,7 +1485,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0x36: // SWAP (HL) (16)
-                        ASM_SWAP_m(cpu, mem, (cpu->H << 8) | cpu->L);
+                        ASM_SWAP_m(cpu, mem, cpu->HL);
                         mCycleTimer = 3;
                         break;
 
@@ -1538,7 +1525,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0x3E: // SRL (HL) (8)
-                        ASM_SRL_m(cpu, mem, (cpu->H << 8) | cpu->L);
+                        ASM_SRL_m(cpu, mem, cpu->HL);
                         mCycleTimer = 3;
                         break;
 
@@ -1578,7 +1565,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0x46: // BIT 0, (HL) (12)
-                        ASM_BIT_b_m(cpu, mem, 0, (cpu->H << 8) | cpu->L);
+                        ASM_BIT_b_m(cpu, mem, 0, cpu->HL);
                         mCycleTimer = 2;
                         break;
 
@@ -1618,7 +1605,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0x4E: // BIT 1, (HL) (12)
-                        ASM_BIT_b_m(cpu, mem, 1, (cpu->H << 8) | cpu->L);
+                        ASM_BIT_b_m(cpu, mem, 1, cpu->HL);
                         mCycleTimer = 2;
                         break;
 
@@ -1658,7 +1645,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0x56: // BIT 2, (HL) (12)
-                        ASM_BIT_b_m(cpu, mem, 2, (cpu->H << 8) | cpu->L);
+                        ASM_BIT_b_m(cpu, mem, 2, cpu->HL);
                         mCycleTimer = 2;
                         break;
 
@@ -1698,7 +1685,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0x5E: // BIT 3, (HL) (12)
-                        ASM_BIT_b_m(cpu, mem, 3, (cpu->H << 8) | cpu->L);
+                        ASM_BIT_b_m(cpu, mem, 3, cpu->HL);
                         mCycleTimer = 2;
                         break;
 
@@ -1738,7 +1725,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0x66: // BIT 4, (HL) (12)
-                        ASM_BIT_b_m(cpu, mem, 4, (cpu->H << 8) | cpu->L);
+                        ASM_BIT_b_m(cpu, mem, 4, cpu->HL);
                         mCycleTimer = 2;
                         break;
 
@@ -1778,7 +1765,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0x6E: // BIT 5, (HL) (12)
-                        ASM_BIT_b_m(cpu, mem, 5, (cpu->H << 8) | cpu->L);
+                        ASM_BIT_b_m(cpu, mem, 5, cpu->HL);
                         mCycleTimer = 2;
                         break;
 
@@ -1818,7 +1805,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0x76: // BIT 6, (HL) (12)
-                        ASM_BIT_b_m(cpu, mem, 6, (cpu->H << 8) | cpu->L);
+                        ASM_BIT_b_m(cpu, mem, 6, cpu->HL);
                         mCycleTimer = 2;
                         break;
 
@@ -1858,7 +1845,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0x7E: // BIT 7, (HL) (12)
-                        ASM_BIT_b_m(cpu, mem, 7, (cpu->H << 8) | cpu->L);
+                        ASM_BIT_b_m(cpu, mem, 7, cpu->HL);
                         mCycleTimer = 2;
                         break;
 
@@ -1898,7 +1885,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0x86: // RES 0, (HL) (16)
-                        ASM_RES_b_m(cpu, mem, 0, (cpu->H << 8) | cpu->L);
+                        ASM_RES_b_m(cpu, mem, 0, cpu->HL);
                         mCycleTimer = 3;
                         break;
 
@@ -1938,7 +1925,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0x8E: // RES 1, (HL) (16)
-                        ASM_RES_b_m(cpu, mem, 1, (cpu->H << 8) | cpu->L);
+                        ASM_RES_b_m(cpu, mem, 1, cpu->HL);
                         mCycleTimer = 3;
                         break;
 
@@ -1978,7 +1965,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0x96: // RES 2, (HL) (16)
-                        ASM_RES_b_m(cpu, mem, 2, (cpu->H << 8) | cpu->L);
+                        ASM_RES_b_m(cpu, mem, 2, cpu->HL);
                         mCycleTimer = 3;
                         break;
 
@@ -2018,7 +2005,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0x9E: // RES 3, (HL) (16)
-                        ASM_RES_b_m(cpu, mem, 3, (cpu->H << 8) | cpu->L);
+                        ASM_RES_b_m(cpu, mem, 3, cpu->HL);
                         mCycleTimer = 3;
                         break;
 
@@ -2058,7 +2045,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0xA6: // RES 4, (HL) (16)
-                        ASM_RES_b_m(cpu, mem, 4, (cpu->H << 8) | cpu->L);
+                        ASM_RES_b_m(cpu, mem, 4, cpu->HL);
                         mCycleTimer = 3;
                         break;
 
@@ -2098,7 +2085,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0xAE: // RES 5, (HL) (16)
-                        ASM_RES_b_m(cpu, mem, 5, (cpu->H << 8) | cpu->L);
+                        ASM_RES_b_m(cpu, mem, 5, cpu->HL);
                         mCycleTimer = 3;
                         break;
 
@@ -2138,7 +2125,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0xB6: // RES 6, (HL) (16)
-                        ASM_RES_b_m(cpu, mem, 6, (cpu->H << 8) | cpu->L);
+                        ASM_RES_b_m(cpu, mem, 6, cpu->HL);
                         mCycleTimer = 3;
                         break;
 
@@ -2178,7 +2165,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0xBE: // RES 7, (HL) (16)
-                        ASM_RES_b_m(cpu, mem, 7, (cpu->H << 8) | cpu->L);
+                        ASM_RES_b_m(cpu, mem, 7, cpu->HL);
                         mCycleTimer = 3;
                         break;
 
@@ -2218,7 +2205,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0xC6: // SET 0, (HL) (16)
-                        ASM_SET_b_m(cpu, mem, 0, (cpu->H << 8) | cpu->L);
+                        ASM_SET_b_m(cpu, mem, 0, cpu->HL);
                         mCycleTimer = 3;
                         break;
 
@@ -2258,7 +2245,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0xCE: // SET 1, (HL) (16)
-                        ASM_SET_b_m(cpu, mem, 1, (cpu->H << 8) | cpu->L);
+                        ASM_SET_b_m(cpu, mem, 1, cpu->HL);
                         mCycleTimer = 3;
                         break;
 
@@ -2298,7 +2285,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0xD6: // SET 2, (HL) (16)
-                        ASM_SET_b_m(cpu, mem, 2, (cpu->H << 8) | cpu->L);
+                        ASM_SET_b_m(cpu, mem, 2, cpu->HL);
                         mCycleTimer = 3;
                         break;
 
@@ -2338,7 +2325,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0xDE: // SET 3, (HL) (16)
-                        ASM_SET_b_m(cpu, mem, 3, (cpu->H << 8) | cpu->L);
+                        ASM_SET_b_m(cpu, mem, 3, cpu->HL);
                         mCycleTimer = 3;
                         break;
 
@@ -2378,7 +2365,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0xE6: // SET 4, (HL) (16)
-                        ASM_SET_b_m(cpu, mem, 4, (cpu->H << 8) | cpu->L);
+                        ASM_SET_b_m(cpu, mem, 4, cpu->HL);
                         mCycleTimer = 3;
                         break;
 
@@ -2418,7 +2405,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0xEE: // SET 5, (HL) (16)
-                        ASM_SET_b_m(cpu, mem, 5, (cpu->H << 8) | cpu->L);
+                        ASM_SET_b_m(cpu, mem, 5, cpu->HL);
                         mCycleTimer = 3;
                         break;
 
@@ -2458,7 +2445,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0xF6: // SET 6, (HL) (16)
-                        ASM_SET_b_m(cpu, mem, 6, (cpu->H << 8) | cpu->L);
+                        ASM_SET_b_m(cpu, mem, 6, cpu->HL);
                         mCycleTimer = 3;
                         break;
 
@@ -2498,7 +2485,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                         break;
 
                     case 0xFE: // SET 7, (HL) (16)
-                        ASM_SET_b_m(cpu, mem, 7, (cpu->H << 8) | cpu->L);
+                        ASM_SET_b_m(cpu, mem, 7, cpu->HL);
                         mCycleTimer = 3;
                         break;
 
@@ -2609,6 +2596,5 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
         MEM_setByte(mem, REG_IF, MEM_getByte(mem, REG_IF) | 0b10000);
     }
 
-    ++mCycleCount;
     return 1; // success
 }

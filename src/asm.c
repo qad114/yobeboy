@@ -53,15 +53,12 @@ void ASM_ADD_A_n(CPU* cpu, uint8_t* reg) {
 }
 
 // ADD HL, n: Add n to HL
-void ASM_ADD_HL_n(CPU* cpu, uint8_t* regUpper, uint8_t* regLower) {
-    uint16_t HL = (cpu->H << 8) | cpu->L;
-    uint16_t operand = (*regUpper << 8) | *regLower;
-    uint16_t result = HL + operand;
+void ASM_ADD_HL_n(CPU* cpu, uint16_t* reg) {
+    uint16_t result = cpu->HL + *reg;
     CPU_setFlagN(cpu, 0);
-    CPU_setFlagH(cpu, ((HL ^ operand ^ (result & 0xFFFF)) & 0x1000) != 0);
-    CPU_setFlagC(cpu, result < HL);
-    cpu->H = (result & 0xFF00) >> 8;
-    cpu->L = result & 0x00FF;
+    CPU_setFlagH(cpu, ((cpu->HL ^ *reg ^ (result & 0xFFFF)) & 0x1000) != 0);
+    CPU_setFlagC(cpu, result < cpu->HL);
+    cpu->HL = result;
     cpu->PC += 1;
 }
 
@@ -247,12 +244,9 @@ void ASM_DEC_n(CPU* cpu, uint8_t* reg) {
 }
 
 // DEC nn: Decrement a 16bit register
-void ASM_DEC_nn(CPU* cpu, uint8_t* regUpper, uint8_t* regLower) {
-    uint16_t value = (*regUpper << 8) | *regLower;
-    --value;
-    *regUpper = (value & 0xFF00) >> 8;
-    *regLower = value & 0x00FF;
-    if (regLower == &(cpu->F)) *regLower &= 0xF0;
+void ASM_DEC_nn(CPU* cpu, uint16_t* reg) {
+    --*reg;
+    if (reg == &(cpu->AF)) cpu->F &= 0xF0;
     cpu->PC += 1;
 }
 
@@ -279,12 +273,9 @@ void ASM_INC_n(CPU* cpu, uint8_t* reg) {
 }
 
 // INC nn: Increment a 16bit register
-void ASM_INC_nn(CPU* cpu, uint8_t* regUpper, uint8_t* regLower) {
-    uint16_t value = (*regUpper << 8) | *regLower;
-    ++value;
-    *regUpper = (value & 0xFF00) >> 8;
-    *regLower = value & 0x00FF;
-    if (regLower == &(cpu->F)) *regLower &= 0xF0;
+void ASM_INC_nn(CPU* cpu, uint16_t* reg) {
+    ++*reg;
+    if (reg == &(cpu->AF)) cpu->F &= 0xF0;
     cpu->PC += 1;
 }
 
@@ -380,13 +371,6 @@ void ASM_LD_n_A(CPU* cpu, uint8_t* reg) {
     cpu->PC += 1;
 }
 
-// LD n, A (16bit): Put value of A into n
-void ASM_LD_n_A_16(CPU* cpu, uint8_t* regUpper, uint8_t* regLower) {
-    *regUpper = 0;
-    *regLower = cpu->A;
-    cpu->PC += 1;
-}
-
 // LD m, A: Same as LD n, A but with memory address m
 void ASM_LD_m_A(CPU* cpu, Memory* mem, uint16_t address) {
     MEM_setByte(mem, address, cpu->A);
@@ -415,10 +399,9 @@ void ASM_LD_nn_SP(CPU* cpu, Memory* mem) {
 }
 
 // LD n, nn: Load next 2 bytes into 16-bit register
-void ASM_LD_n_nn(CPU* cpu, Memory* mem, uint8_t* regUpper, uint8_t* regLower) {
-    *regUpper = MEM_getByte(mem, cpu->PC + 2);
-    *regLower = MEM_getByte(mem, cpu->PC + 1);
-    if (regLower == &(cpu->F)) *regLower &= 0xF0;
+void ASM_LD_n_nn(CPU* cpu, Memory* mem, uint16_t* reg) {
+    *reg = (MEM_getByte(mem, cpu->PC + 2) << 8) | MEM_getByte(mem, cpu->PC + 1);
+    if (reg == &(cpu->AF)) cpu->F &= 0xF0;
     cpu->PC += 3;
 }
 
@@ -533,17 +516,15 @@ void ASM_OR_n(CPU* cpu, uint8_t* reg) {
 }
 
 // POP nn: Pop 2 bytes off stack into register, then increment SP twice
-void ASM_POP_nn(CPU* cpu, Memory* mem, uint8_t* regUpper, uint8_t* regLower) {
-    uint16_t value = MEM_popFromStack(mem, &(cpu->SP));
-    *regUpper = (value & 0xFF00) >> 8;
-    *regLower = value & 0x00FF;
-    if (regLower == &(cpu->F)) *regLower &= 0xF0;
+void ASM_POP_nn(CPU* cpu, Memory* mem, uint16_t* reg) {
+    *reg = MEM_popFromStack(mem, &(cpu->SP));
+    if (reg == &(cpu->AF)) cpu->F &= 0xF0;
     cpu->PC += 1;
 }
 
 // PUSH nn: Push 16bit register nn onto stack, then decrement SP twice
-void ASM_PUSH_nn(CPU* cpu, Memory* mem, uint8_t* regUpper, uint8_t* regLower) {
-    MEM_pushToStack(mem, &(cpu->SP), (*regUpper << 8) | *regLower);
+void ASM_PUSH_nn(CPU* cpu, Memory* mem, uint16_t* reg) {
+    MEM_pushToStack(mem, &(cpu->SP), *reg);
     cpu->PC += 1;
 }
 

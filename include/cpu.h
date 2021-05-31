@@ -14,8 +14,32 @@ struct CPU {
     uint8_t opcode;
 
     // Registers - AF, BC, DE and HL can be used as one 16-bit register
-    uint8_t A, B, C, D, E, F, H, L;
-    uint16_t SP, PC;
+    //uint8_t A, B, C, D, E, F, H, L;
+    //uint16_t SP, PC;
+
+    // Registers
+    union {
+        struct { uint8_t F, A; };
+        uint16_t AF;
+    };
+
+    union {
+        struct { uint8_t C, B; };
+        uint16_t BC;
+    };
+
+    union {
+        struct { uint8_t E, D; };
+        uint16_t DE;
+    };
+
+    union {
+        struct { uint8_t L, H; };
+        uint16_t HL;
+    };
+
+    uint16_t SP;
+    uint16_t PC;
 
     // Interrupt Master Enable flag
     int IME;
