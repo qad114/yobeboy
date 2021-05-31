@@ -192,6 +192,8 @@ static void renderObjects(GPU* gpu, Memory* mem) {
     for (int i = 0xFE00; i < 0xFE9F; i += 4) {
         int yPos = MEM_getByte(mem, i) - 16;
         int xPos = MEM_getByte(mem, i + 1) - 8;
+        if (xPos >= 160) continue;
+
         int tileIndex = MEM_getByte(mem, i + 2);
         uint16_t tileAddress = 0x8000 + (tileIndex * 0x10);
         uint8_t flags = MEM_getByte(mem, i + 3);
@@ -217,7 +219,7 @@ static void renderObjects(GPU* gpu, Memory* mem) {
             int offset = (yPos * 4 * 160) + ((rowIndex / 2) * 4 * 160) + (xPos * 4);
             for (int i = 0; i < 8; ++i) {
                 if (pixels[i] == 0) continue;
-                if (xPos > 159) continue;
+                //if (xPos > 159) continue;
                 int pos = offset + (i * 4);
                 if (pos < 0 || pos >= (160 * 144 * 4)) continue;
                 int color = getColorNumber(mem, pixels[i], (flags & 0b00010000) >> 4 ? REG_OBP1 : REG_OBP0);

@@ -4,6 +4,7 @@
 typedef struct CPU CPU;
 
 #include <stdint.h>
+#include "common/endianness.h"
 #include "gpu.h"
 #include "joypad.h"
 #include "memory.h"
@@ -13,28 +14,40 @@ struct CPU {
     // Opcodes can be 8- or 16-bit - we will use an 8-bit variable and decode the next bits when necessary
     uint8_t opcode;
 
-    // Registers - AF, BC, DE and HL can be used as one 16-bit register
-    //uint8_t A, B, C, D, E, F, H, L;
-    //uint16_t SP, PC;
-
     // Registers
     union {
+        #if ENDIANNESS == LITTLE_E
         struct { uint8_t F, A; };
+        #else
+        struct { uint8_t A, F; };
+        #endif
         uint16_t AF;
     };
 
     union {
+        #if ENDIANNESS == LITTLE_E
         struct { uint8_t C, B; };
+        #else
+        struct { uint8_t B, C; };
+        #endif
         uint16_t BC;
     };
 
     union {
+        #if ENDIANNESS == LITTLE_E
         struct { uint8_t E, D; };
+        #else
+        struct { uint8_t D, E; };
+        #endif
         uint16_t DE;
     };
 
     union {
+        #if ENDIANNESS == LITTLE_E
         struct { uint8_t L, H; };
+        #else
+        struct { uint8_t H, L; };
+        #endif
         uint16_t HL;
     };
 
