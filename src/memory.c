@@ -84,6 +84,10 @@ void MEM_setByte(Memory* mem, uint16_t address, uint8_t value) {
         MEM_dmaBegin(mem, value);
         *(mem->logicalMemory[address]) = value;
 
+    } else if (address == REG_TAC) {
+        // Preserve last 3 bits only (set rest to 1)
+        *(mem->logicalMemory[address]) = 0xF8 | (value & 0x7);
+
     } else if (address >= OFFSET_EXTRAM && address < OFFSET_WORKRAMBANK0 && mem->extRamBanksNo == 0) {
         // Do nothing
 
@@ -247,7 +251,7 @@ void MEM_MBC_dispatch(Memory* mem, uint16_t address, uint8_t value) {
 }
 
 static uint8_t getBankNo(uint8_t bankNoByte, int totalBanks) {
-    uint8_t bankNo = bankNoByte & 0b00011111;
+    uint8_t bankNo = bankNoByte & 0x1F;
     if (bankNo >= totalBanks) {
         int requiredBits = 0;
         uint8_t bankNoCopy = bankNo;
@@ -284,7 +288,7 @@ void MEM_MBC1_RAM_handle(Memory* mem, uint16_t address, uint8_t value) {
 
     } else if (address >= 0x4000 && address <= 0x5FFF) {
         // Change the RAM bank number
-        uint8_t bankNo = value & 0b11;
+        uint8_t bankNo = value & 0x3;
         MEM_setRamBank(mem, bankNo);
 
     } else if (address >= 0x6000 && address <= 0x7FFF) {

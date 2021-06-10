@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "common/bitwise.h"
 #include "asm.h"
 #include "constants.h"
 #include "cpu.h"
@@ -11,15 +12,15 @@
 
 int mCycleTimer = 0;
 
-int CPU_getFlagZ(CPU* cpu) { return (cpu->F & 0b10000000) >> 7; }
-int CPU_getFlagN(CPU* cpu) { return (cpu->F & 0b01000000) >> 6; }
-int CPU_getFlagH(CPU* cpu) { return (cpu->F & 0b00100000) >> 5; }
-int CPU_getFlagC(CPU* cpu) { return (cpu->F & 0b00010000) >> 4; }
+int CPU_getFlagZ(CPU* cpu) { return getBit(cpu->F, 7); }
+int CPU_getFlagN(CPU* cpu) { return getBit(cpu->F, 6); }
+int CPU_getFlagH(CPU* cpu) { return getBit(cpu->F, 5); }
+int CPU_getFlagC(CPU* cpu) { return getBit(cpu->F, 4); }
 
-void CPU_setFlagZ(CPU* cpu, int value) { cpu->F = value == 0 ? cpu->F & 0b01111111 : cpu->F | 0b10000000; }
-void CPU_setFlagN(CPU* cpu, int value) { cpu->F = value == 0 ? cpu->F & 0b10111111 : cpu->F | 0b01000000; }
-void CPU_setFlagH(CPU* cpu, int value) { cpu->F = value == 0 ? cpu->F & 0b11011111 : cpu->F | 0b00100000; }
-void CPU_setFlagC(CPU* cpu, int value) { cpu->F = value == 0 ? cpu->F & 0b11101111 : cpu->F | 0b00010000; }
+void CPU_setFlagZ(CPU* cpu, int value) { cpu->F = setBit(cpu->F, 7, value); }
+void CPU_setFlagN(CPU* cpu, int value) { cpu->F = setBit(cpu->F, 6, value); }
+void CPU_setFlagH(CPU* cpu, int value) { cpu->F = setBit(cpu->F, 5, value); }
+void CPU_setFlagC(CPU* cpu, int value) { cpu->F = setBit(cpu->F, 4, value); }
 
 void CPU_init(CPU* cpu) {
     // Init everything
@@ -2516,50 +2517,44 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
         }
     }
 
-    // Fix raw memory writes (TODO: Stop using MEM_getReference)
-    uint8_t TAC = MEM_getByte(mem, REG_TAC);
-    MEM_setByte(mem, REG_TAC, 0b11111000 | (TAC & 0b111));
-
     // Handle interrupts and then reset them
     uint8_t interruptEnable = MEM_getByte(mem, REG_IE);
     uint8_t interruptFlag = MEM_getByte(mem, REG_IF);
     if (cpu->IME) {
-        if ((interruptEnable & 0b1) && (interruptFlag & 0b1)) {
+        if (getBit(interruptEnable, 0) && getBit(interruptFlag, 0)) {
             // V-Blank
             cpu->IME = 0;
-            MEM_setByte(mem, REG_IF, interruptFlag & 0b11111110);
-            //printf("HANDLING VBLANK INTERRUPT\n");
+            MEM_setByte(mem, REG_IF, setBit(interruptFlag, 0, 0));
             MEM_pushToStack(mem, &(cpu->SP), cpu->PC);
             cpu->PC = 0x0040;
 
-        } else if (((interruptEnable & 0b10) >> 1) && ((interruptFlag & 0b10) >> 1)) {
+        } else if (getBit(interruptEnable, 1) && getBit(interruptFlag, 1)) {
             // LCD STAT
             cpu->IME = 0;
-            MEM_setByte(mem, REG_IF, interruptFlag & 0b11111101);
+            MEM_setByte(mem, REG_IF, setBit(interruptFlag, 1, 0));
             //printf("HANDLING STAT INTERRUPT\n");
             MEM_pushToStack(mem, &(cpu->SP), cpu->PC);
             cpu->PC = 0x0048;
 
-        } else if (((interruptEnable & 0b100) >> 2) && ((interruptFlag & 0b100) >> 2)) {
+        } else if (getBit(interruptEnable, 2) && getBit(interruptFlag, 2)) {
             // Timer
             cpu->IME = 0;
-            MEM_setByte(mem, REG_IF, interruptFlag & 0b11111011);
+            MEM_setByte(mem, REG_IF, setBit(interruptFlag, 2, 0));
             //printf("HANDLING TIMER INTERRUPT\n");
             MEM_pushToStack(mem, &(cpu->SP), cpu->PC);
             cpu->PC = 0x0050;
 
-        } else if (((interruptEnable & 0b1000) >> 3) && ((interruptFlag & 0b1000) >> 3)) {
+        } else if (getBit(interruptEnable, 3) && getBit(interruptFlag, 3)) {
             // Serial
             cpu->IME = 0;
-            MEM_setByte(mem, REG_IF, interruptFlag & 0b11110111);
+            MEM_setByte(mem, REG_IF, setBit(interruptFlag, 3, 0));
             MEM_pushToStack(mem, &(cpu->SP), cpu->PC);
             cpu->PC = 0x0058;
 
-        } else if (((interruptEnable & 0b10000) >> 4) && ((interruptFlag & 0b10000) >> 4)) {
+        } else if (getBit(interruptEnable, 4) && getBit(interruptFlag, 4)) {
             // Joypad
-            printf("HANDLING JOYPAD INTERRUPT\n");
             cpu->IME = 0;
-            MEM_setByte(mem, REG_IF, interruptFlag & 0b11101111);
+            MEM_setByte(mem, REG_IF, setBit(interruptFlag, 4, 0));
             MEM_pushToStack(mem, &(cpu->SP), cpu->PC);
             cpu->PC = 0x0060;
         }
@@ -2572,28 +2567,27 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
     //printf("%x\n", MEM_getByte(mem, REG_DIV));
 
     // Update the joypad register (temporary, move to joypad)
-    MEM_setByte(mem, REG_JOYP, MEM_getByte(mem, REG_JOYP) | 0b11001111);
+    MEM_setByte(mem, REG_JOYP, MEM_getByte(mem, REG_JOYP) | 0xCF);
 
-    if (!((MEM_getByte(mem, REG_JOYP) & 0b00100000) >> 5)) {
+    if (!getBit(MEM_getByte(mem, REG_JOYP), 5)) {
         // Action buttons
-        if (joy->a) MEM_setByte(mem, REG_JOYP, MEM_getByte(mem, REG_JOYP) & 0b11111110);
-        if (joy->b) MEM_setByte(mem, REG_JOYP, MEM_getByte(mem, REG_JOYP) & 0b11111101);
-        if (joy->select) MEM_setByte(mem, REG_JOYP, MEM_getByte(mem, REG_JOYP) & 0b11111011);
-        if (joy->start) MEM_setByte(mem, REG_JOYP, MEM_getByte(mem, REG_JOYP) & 0b11110111);
+        if (joy->a) MEM_setByte(mem, REG_JOYP, setBit(MEM_getByte(mem, REG_JOYP), 0, 0));
+        if (joy->b) MEM_setByte(mem, REG_JOYP, setBit(MEM_getByte(mem, REG_JOYP), 1, 0));
+        if (joy->select) MEM_setByte(mem, REG_JOYP, setBit(MEM_getByte(mem, REG_JOYP), 2, 0));
+        if (joy->start) MEM_setByte(mem, REG_JOYP, setBit(MEM_getByte(mem, REG_JOYP), 3, 0));
     }
-    if (!((MEM_getByte(mem, REG_JOYP) & 0b00010000) >> 4)) {
+    if (!getBit(MEM_getByte(mem, REG_JOYP), 4)) {
         // Direction buttons
-        //MEM_setByte(mem, REG_JOYP, MEM_getByte(mem, REG_JOYP) | 0b11000000);
-        if (joy->right) MEM_setByte(mem, REG_JOYP, MEM_getByte(mem, REG_JOYP) & 0b11111110);
-        if (joy->left) MEM_setByte(mem, REG_JOYP, MEM_getByte(mem, REG_JOYP) & 0b11111101);
-        if (joy->up) MEM_setByte(mem, REG_JOYP, MEM_getByte(mem, REG_JOYP) & 0b11111011);
-        if (joy->down) MEM_setByte(mem, REG_JOYP, MEM_getByte(mem, REG_JOYP) & 0b11110111);
+        if (joy->right) MEM_setByte(mem, REG_JOYP, setBit(MEM_getByte(mem, REG_JOYP), 0, 0));
+        if (joy->left) MEM_setByte(mem, REG_JOYP, setBit(MEM_getByte(mem, REG_JOYP), 1, 0));
+        if (joy->up) MEM_setByte(mem, REG_JOYP, setBit(MEM_getByte(mem, REG_JOYP), 2, 0));
+        if (joy->down) MEM_setByte(mem, REG_JOYP, setBit(MEM_getByte(mem, REG_JOYP), 3, 0));
     }
 
-    if ((MEM_getByte(mem, REG_JOYP) & 0x0F) != 0x0F) {
+    if ((MEM_getByte(mem, REG_JOYP) & 0xF) != 0xF) {
         // Request joypad interrupt
         //printf("A button was pressed: %x %d\n", MEM_getByte(mem, REG_JOYP), joy->a);
-        MEM_setByte(mem, REG_IF, MEM_getByte(mem, REG_IF) | 0b10000);
+        MEM_setByte(mem, REG_IF, MEM_getByte(mem, REG_IF) | 0x10);
     }
 
     return 1; // success

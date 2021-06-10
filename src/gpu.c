@@ -8,7 +8,7 @@
 #include "memory.h"
 
 static int getColorNumber(Memory* mem, int index, uint16_t paletteAddress) {
-    return (MEM_getByte(mem, paletteAddress) & (0b11 << (index * 2))) >> (index * 2);
+    return (MEM_getByte(mem, paletteAddress) & (0x3 << (index * 2))) >> (index * 2);
 }
 
 static uint8_t getColorByte(int color) {
@@ -25,7 +25,7 @@ static void renderBackground(GPU* gpu, Memory* mem) {
     for (int mapY = 0; mapY < 32; ++mapY) {
         for (int mapX = 0; mapX < 32; ++mapX) {
             uint16_t address = (getBit(LCDC, 3) ? 0x9C00 : 0x9800) + (mapY * 0x20) + mapX;
-            uint16_t tileAddress = ((LCDC & 0b00010000) >> 4)
+            uint16_t tileAddress = getBit(LCDC, 4)
                 ? 0x8000 + (MEM_getByte(mem, address) * 0x10)
                 : 0x9000 + (((int8_t) (MEM_getByte(mem, address))) * 0x10);
 
@@ -33,24 +33,10 @@ static void renderBackground(GPU* gpu, Memory* mem) {
                 uint8_t byte1 = MEM_getByte(mem, tileAddress + i);
                 uint8_t byte2 = MEM_getByte(mem, tileAddress + i + 1);
 
-                uint8_t pixel1 = ((byte2 & 0b10000000) >> 6) | ((byte1 & 0b10000000) >> 7);
-                uint8_t pixel2 = ((byte2 & 0b01000000) >> 5) | ((byte1 & 0b01000000) >> 6);
-                uint8_t pixel3 = ((byte2 & 0b00100000) >> 4) | ((byte1 & 0b00100000) >> 5);
-                uint8_t pixel4 = ((byte2 & 0b00010000) >> 3) | ((byte1 & 0b00010000) >> 4);
-                uint8_t pixel5 = ((byte2 & 0b00001000) >> 2) | ((byte1 & 0b00001000) >> 3);
-                uint8_t pixel6 = ((byte2 & 0b00000100) >> 1) | ((byte1 & 0b00000100) >> 2);
-                uint8_t pixel7 =  (byte2 & 0b00000010)       | ((byte1 & 0b00000010) >> 1);
-                uint8_t pixel8 = ((byte2 & 0b00000001) << 1) |  (byte1 & 0b00000001);
-
                 int offset = (mapY * 8 * 256) + (((int)(i / 2)) * 256) + (mapX * 8);
-                internalFramebuffer[offset + 0] = pixel1;
-                internalFramebuffer[offset + 1] = pixel2;
-                internalFramebuffer[offset + 2] = pixel3;
-                internalFramebuffer[offset + 3] = pixel4;
-                internalFramebuffer[offset + 4] = pixel5;
-                internalFramebuffer[offset + 5] = pixel6;
-                internalFramebuffer[offset + 6] = pixel7;
-                internalFramebuffer[offset + 7] = pixel8;
+                for (int i = 0; i < 8; ++i) {
+                    internalFramebuffer[offset + i] = getBit(byte2, 7 - i) << 1 | getBit(byte1, 7 - i);
+                }
             }
         }
     }
@@ -71,7 +57,7 @@ static void renderBackground(GPU* gpu, Memory* mem) {
 }
 
 // TODO: This function aims to render the background faster, but it is currently
-// incomplete (and I may never complete it as I might move onto scanline rendering)
+// incomplete (and I may never complete it as I will move onto scanline rendering)
 static void UNUSED_renderBackground(GPU* gpu, Memory* mem) {
     uint8_t SCX = MEM_getByte(mem, REG_SCX);
     uint8_t SCY = MEM_getByte(mem, REG_SCY);
@@ -80,7 +66,7 @@ static void UNUSED_renderBackground(GPU* gpu, Memory* mem) {
     for (int mapY = SCY / 8; mapY < (SCY + 144) / 8; ++mapY) {
         for (int mapX = SCX / 8; mapX < (SCX + 160) / 8; ++mapX) {
             uint16_t address = (getBit(LCDC, 3) ? 0x9C00 : 0x9800) + (mapY * 0x20) + mapX;
-            uint16_t tileAddress = ((LCDC & 0b00010000) >> 4)
+            uint16_t tileAddress = getBit(LCDC, 4)
                 ? 0x8000 + (MEM_getByte(mem, address) * 0x10)
                 : 0x9000 + (((int8_t) (MEM_getByte(mem, address))) * 0x10);
 
@@ -116,32 +102,18 @@ static void renderWindow(GPU* gpu, Memory* mem) {
     for (int mapY = 0; mapY < 32; ++mapY) {
         for (int mapX = 0; mapX < 32; ++mapX) {
             uint16_t address = (getBit(LCDC, 6) ? 0x9C00 : 0x9800) + (mapY * 0x20) + mapX;
-            uint16_t tileAddress = ((LCDC & 0b00010000) >> 4)
+            uint16_t tileAddress = getBit(LCDC, 4)
                 ? 0x8000 + (MEM_getByte(mem, address) * 0x10)
                 : 0x9000 + (((int8_t) (MEM_getByte(mem, address))) * 0x10);
 
             for (int i = 0; i < 16; i += 2) {
                 uint8_t byte1 = MEM_getByte(mem, tileAddress + i);
                 uint8_t byte2 = MEM_getByte(mem, tileAddress + i + 1);
-
-                uint8_t pixel1 = ((byte2 & 0b10000000) >> 6) | ((byte1 & 0b10000000) >> 7);
-                uint8_t pixel2 = ((byte2 & 0b01000000) >> 5) | ((byte1 & 0b01000000) >> 6);
-                uint8_t pixel3 = ((byte2 & 0b00100000) >> 4) | ((byte1 & 0b00100000) >> 5);
-                uint8_t pixel4 = ((byte2 & 0b00010000) >> 3) | ((byte1 & 0b00010000) >> 4);
-                uint8_t pixel5 = ((byte2 & 0b00001000) >> 2) | ((byte1 & 0b00001000) >> 3);
-                uint8_t pixel6 = ((byte2 & 0b00000100) >> 1) | ((byte1 & 0b00000100) >> 2);
-                uint8_t pixel7 =  (byte2 & 0b00000010)       | ((byte1 & 0b00000010) >> 1);
-                uint8_t pixel8 = ((byte2 & 0b00000001) << 1) |  (byte1 & 0b00000001);
-
+                
                 int offset = (mapY * 8 * 256) + (((int)(i / 2)) * 256) + (mapX * 8);
-                internalFramebuffer[offset + 0] = pixel1;
-                internalFramebuffer[offset + 1] = pixel2;
-                internalFramebuffer[offset + 2] = pixel3;
-                internalFramebuffer[offset + 3] = pixel4;
-                internalFramebuffer[offset + 4] = pixel5;
-                internalFramebuffer[offset + 5] = pixel6;
-                internalFramebuffer[offset + 6] = pixel7;
-                internalFramebuffer[offset + 7] = pixel8;
+                for (int i = 0; i < 8; ++i) {
+                    internalFramebuffer[offset + i] = getBit(byte2, 7 - i) << 1 | getBit(byte1, 7 - i);
+                }
             }
         }
     }
@@ -195,7 +167,7 @@ static void renderObjects(GPU* gpu, Memory* mem) {
                 if (pixels[i] == 0) continue;
                 int pos = offset + (i * 4);
                 if (pos < 0 || pos >= (160 * 144 * 4) || xPos + i < 0 || xPos + i >= 160) continue; // TODO: Removing the first check should work, but doesn't - possible bug
-                int color = getColorNumber(mem, pixels[i], (flags & 0b00010000) >> 4 ? REG_OBP1 : REG_OBP0);
+                int color = getColorNumber(mem, pixels[i], (getBit(flags, 4) ? REG_OBP1 : REG_OBP0));
                 memset(gpu->framebuffer + pos, getColorByte(color), 3);
                 gpu->framebuffer[pos + 3] = 0xFF;
             }
@@ -246,7 +218,7 @@ void GPU_update(CPU* cpu, GPU* gpu, Memory* mem) {
     STAT = MEM_getByte(mem, REG_STAT);
     if (MEM_getByte(mem, REG_LYC) == MEM_getByte(mem, REG_LY)) {
         MEM_setByte(mem, REG_STAT, setBit(STAT, 2, 1));
-        MEM_setByte(mem, REG_IF, MEM_getByte(mem, REG_IF) | 0b10);
+        MEM_setByte(mem, REG_IF, setBit(MEM_getByte(mem, REG_IF), 1, 1));
     } else {
         MEM_setByte(mem, REG_STAT, setBit(STAT, 2, 0));
     }
@@ -255,7 +227,7 @@ void GPU_update(CPU* cpu, GPU* gpu, Memory* mem) {
 // Generate LCD framebuffer from VRAM
 void GPU_vRamToFrameBuffer(GPU* gpu, Memory* mem) {
     uint8_t LCDC = MEM_getByte(mem, REG_LCDC);
-    if (!((LCDC & 0b10000000) >> 7)) {
+    if (!getBit(LCDC, 7)) {
         // LCD disabled, return a blank screen
         for (int i = 0; i < (160 * 144 * 4); ++i) {
             gpu->framebuffer[i] = 0xFF;
@@ -264,10 +236,10 @@ void GPU_vRamToFrameBuffer(GPU* gpu, Memory* mem) {
         return;
     }
 
-    if (getBit(LCDC, 1)) {
+    if (getBit(LCDC, 0)) {
         renderBackground(gpu, mem);
         if (getBit(LCDC, 5)) renderWindow(gpu, mem);
     };
-    if ((LCDC & 0x2) >> 1) renderObjects(gpu, mem);
+    if (getBit(LCDC, 1)) renderObjects(gpu, mem);
     gpu->fbUpdated = true;
 }

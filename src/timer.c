@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include "common/bitwise.h"
 #include "constants.h"
 #include "cpu.h"
 #include "memory.h"
@@ -16,14 +17,14 @@ void TIMER_update(CPU* cpu, Memory* mem, Timer* timer) {
     }
 
     // Update TIMA
-    if (!((MEM_getByte(mem, REG_TAC) & 0b100) >> 2)) {
+    if (!getBit(MEM_getByte(mem, REG_TAC), 2)) {
         timer->timaCounter = 0;
         MEM_setByte(mem, REG_TIMA, 0);
         return;
     }
 
     int interval = 0;
-    switch (MEM_getByte(mem, REG_TAC) & 0b11) {
+    switch (MEM_getByte(mem, REG_TAC) & 0x3) {
         case 0: interval = 256; break;
         case 1: interval = 4; break;
         case 2: interval = 16; break;
@@ -51,7 +52,7 @@ void updateTima(CPU* cpu, Memory* mem, Timer* timer) {
     uint8_t TIMA = MEM_getByte(mem, REG_TIMA);
     if (TIMA == 0xFF) {
         MEM_setByte(mem, REG_TIMA, MEM_getByte(mem, REG_TMA));
-        MEM_setByte(mem, REG_IF, MEM_getByte(mem, REG_IF) | 0b100);
+        MEM_setByte(mem, REG_IF, MEM_getByte(mem, REG_IF) | 0x4);
     } else {
         MEM_forceSetByte(mem, REG_TIMA, TIMA + 1);
     }
