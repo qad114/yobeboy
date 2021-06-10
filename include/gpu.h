@@ -1,6 +1,8 @@
 #ifndef GPU_H
 #define GPU_H
 
+#include <stdbool.h>
+
 typedef struct GPU GPU;
 
 #include "cpu.h"
@@ -9,7 +11,7 @@ typedef struct GPU GPU;
 struct GPU {
     int machineCycleCounter;
     uint8_t* framebuffer;
-    int fbUpdated;
+    bool fbUpdated;
 };
 
 static int getColorNumber(Memory* mem, int index, uint16_t paletteAddress);

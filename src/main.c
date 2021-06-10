@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -30,7 +31,7 @@ int main(int argc, char** argv) {
 
     GPU* gpu = malloc(sizeof(*gpu));
     gpu->framebuffer = (uint8_t*) malloc(sizeof(uint8_t) * SCREEN_WIDTH * SCREEN_HEIGHT * 4);
-    gpu->fbUpdated = 0;
+    gpu->fbUpdated = false;
     gpu->machineCycleCounter = 0;
 
     Timer* timer = malloc(sizeof(*timer));
@@ -101,7 +102,7 @@ int main(int argc, char** argv) {
             SDL_RenderClear(renderer);
             SDL_RenderCopy(renderer, texture, NULL, NULL);
             SDL_RenderPresent(renderer);
-            gpu->fbUpdated = 0;
+            gpu->fbUpdated = false;
 
             // Maintain 60fps
             uint32_t elapsedTime = SDL_GetTicks() - startTime;
