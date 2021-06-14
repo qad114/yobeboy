@@ -130,9 +130,9 @@ void MEM_loadROM(Memory* mem, const char* path) {
         exit(1);
     }
     fseek(file, 0L, SEEK_END);
-    int filesize = ftell(file);
+    size_t filesize = ftell(file);
     rewind(file);
-    mem->romBanksNo = filesize / 0x4000;
+    mem->romBanksNo = filesize / 0x4000; // TODO: Get the filesize from the ROM header
     printf("%d\n", mem->romBanksNo);
 
     // Load ROM into banks array

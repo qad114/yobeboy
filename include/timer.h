@@ -11,9 +11,6 @@ struct Timer {
     int timaCounter;
 };
 
-static void updateDiv(CPU* cpu, Memory* mem, Timer* timer);
-static void updateTima(CPU* cpu, Memory* mem, Timer* timer);
-
 void TIMER_update(CPU* cpu, Memory* mem, Timer* timer);
 
 #endif

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "common/bitwise.h"
@@ -56,43 +57,6 @@ static void renderBackground(GPU* gpu, Memory* mem) {
     free(internalFramebuffer);
 }
 
-// TODO: This function aims to render the background faster, but it is currently
-// incomplete (and I may never complete it as I will move onto scanline rendering)
-static void UNUSED_renderBackground(GPU* gpu, Memory* mem) {
-    uint8_t SCX = MEM_getByte(mem, REG_SCX);
-    uint8_t SCY = MEM_getByte(mem, REG_SCY);
-    uint8_t LCDC = MEM_getByte(mem, REG_LCDC);
-
-    for (int mapY = SCY / 8; mapY < (SCY + 144) / 8; ++mapY) {
-        for (int mapX = SCX / 8; mapX < (SCX + 160) / 8; ++mapX) {
-            uint16_t address = (getBit(LCDC, 3) ? 0x9C00 : 0x9800) + (mapY * 0x20) + mapX;
-            uint16_t tileAddress = getBit(LCDC, 4)
-                ? 0x8000 + (MEM_getByte(mem, address) * 0x10)
-                : 0x9000 + (((int8_t) (MEM_getByte(mem, address))) * 0x10);
-
-            for (int i = 0; i < 16; i += 2) {
-                uint8_t byte1 = MEM_getByte(mem, tileAddress + i);
-                uint8_t byte2 = MEM_getByte(mem, tileAddress + i + 1);
-
-                uint8_t pixels[8];
-                for (int i = 0; i < 8; ++i) {
-                    pixels[i] = getBit(byte2, 7 - i) << 1 | getBit(byte1, 7 - i);
-                }
-
-                int offset = (((mapY * 8) - SCY) * 160 * 4) + ((i / 2) * 160 * 4) + (((mapX * 8) - SCX) * 4) + ((SCX % 8) * 4);// - (32 - ((SCX % 8) * 4));
-                for (int i = 0; i < 32; i += 4) {
-                    int loc = offset + i;
-                    int xPos = (((mapX * 8) - SCX) * 4);
-                    if (loc < 0 || loc > (160 * 144 * 4) || xPos > (160 * 4) || xPos < 0) continue;
-                    //if (loc < 0 || loc > (160 * 144 * 4)) continue;
-                    memset(gpu->framebuffer + loc, getColorByte(getColorNumber(mem, pixels[i / 4], REG_BGP)), 3);
-                    gpu->framebuffer[loc + 3] = 0xFF;
-                }
-            }
-        }
-    }
-}
-
 static void renderWindow(GPU* gpu, Memory* mem) {
     uint8_t* internalFramebuffer = malloc(256 * 256);
     uint8_t WX = MEM_getByte(mem, REG_WX);
@@ -143,7 +107,7 @@ static void renderObjects(GPU* gpu, Memory* mem) {
         int tileIndex = MEM_getByte(mem, i + 2);
         uint16_t tileAddress = 0x8000 + (tileIndex * 0x10);
         uint8_t flags = MEM_getByte(mem, i + 3);
-        int underBg = getBit(flags, 7);
+        //int underBg = getBit(flags, 7);
         int yFlip = getBit(flags, 6);
         int xFlip = getBit(flags, 5);
 

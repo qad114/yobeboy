@@ -6,12 +6,15 @@
 #include "memory.h"
 #include "timer.h"
 
+static void updateDiv(Memory* mem, Timer* timer);
+static void updateTima(Memory* mem, Timer* timer);
+
 // Update the timer and divider registers
 void TIMER_update(CPU* cpu, Memory* mem, Timer* timer) {
     // Update DIV every 256 machine cycles
     if (timer->divCounter == 64) {//256) {
         timer->divCounter = 0;
-        updateDiv(cpu, mem, timer);
+        updateDiv(mem, timer);
     } else {
         ++(timer->divCounter);
     }
@@ -34,13 +37,13 @@ void TIMER_update(CPU* cpu, Memory* mem, Timer* timer) {
     //++(timer->timaCounter);
     if (timer->timaCounter >= interval) {
         timer->timaCounter = (timer->timaCounter - interval + 1);
-        updateTima(cpu, mem, timer);
+        updateTima(mem, timer);
     } else {
         ++(timer->timaCounter);
     }
 }
 
-void updateDiv(CPU* cpu, Memory* mem, Timer* timer) {
+static void updateDiv(Memory* mem, Timer* timer) {
     uint8_t DIV = MEM_getByte(mem, REG_DIV);
     if (DIV == 0) {
         timer->divCounter = 0;
@@ -48,7 +51,7 @@ void updateDiv(CPU* cpu, Memory* mem, Timer* timer) {
     MEM_forceSetByte(mem, REG_DIV, DIV + 1);
 }
 
-void updateTima(CPU* cpu, Memory* mem, Timer* timer) {
+static void updateTima(Memory* mem, Timer* timer) {
     uint8_t TIMA = MEM_getByte(mem, REG_TIMA);
     if (TIMA == 0xFF) {
         MEM_setByte(mem, REG_TIMA, MEM_getByte(mem, REG_TMA));

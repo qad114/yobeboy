@@ -14,11 +14,6 @@ struct GPU {
     bool fbUpdated;
 };
 
-static int getColorNumber(Memory* mem, int index, uint16_t paletteAddress);
-static uint8_t getColorByte(int color);
-static void renderBackground(GPU* gpu, Memory* mem);
-static void renderObjects(GPU* gpu, Memory* mem);
-
 void GPU_update(CPU* cpu, GPU* gpu, Memory* mem);
 void GPU_vRamToFrameBuffer(GPU* gpu, Memory* mem);
 
