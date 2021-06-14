@@ -136,7 +136,7 @@ void MEM_loadROM(Memory* mem, const char* path) {
     printf("%d\n", mem->romBanksNo);
 
     // Load ROM into banks array
-    mem->romBanks = malloc(filesize);
+    mem->romBanks = malloc(filesize); // freed in main.c:quit
     assert(fread(mem->romBanks, 1, filesize, file) == filesize);
     fclose(file);
 
@@ -171,7 +171,7 @@ void MEM_loadROM(Memory* mem, const char* path) {
     uint8_t mbcCode = mem->romBank0[0x0147];
     if (mbcCode == 0x03) {
         mem->battery = 1;
-        mem->romPath = malloc(strlen(path) + 1); // freed in main.c:exit
+        mem->romPath = malloc(strlen(path) + 1); // freed in main.c:quit
         strcpy(mem->romPath, path);
         char* saveFileName = malloc(strlen(path) + 5); // freed at the end of this block
         snprintf(saveFileName, strlen(path) + 5, "%s.sav", path);

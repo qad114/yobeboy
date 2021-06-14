@@ -58,7 +58,7 @@ static void renderBackground(GPU* gpu, Memory* mem) {
 }
 
 static void renderWindow(GPU* gpu, Memory* mem) {
-    uint8_t* internalFramebuffer = malloc(256 * 256);
+    uint8_t* internalFramebuffer = malloc(256 * 256); // freed at the end of this function
     uint8_t WX = MEM_getByte(mem, REG_WX);
     uint8_t WY = MEM_getByte(mem, REG_WY);
     uint8_t LCDC = MEM_getByte(mem, REG_LCDC);
