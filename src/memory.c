@@ -171,15 +171,18 @@ void MEM_loadROM(Memory* mem, const char* path) {
     uint8_t mbcCode = mem->romBank0[0x0147];
     if (mbcCode == 0x03) {
         mem->battery = 1;
+        mem->romPath = malloc(strlen(path) + 1); // freed in main.c:exit
         strcpy(mem->romPath, path);
-        char saveFileName[128];
-        sprintf(saveFileName, "%s.sav", path);
+        char* saveFileName = malloc(strlen(path) + 5); // freed at the end of this block
+        snprintf(saveFileName, strlen(path) + 5, "%s.sav", path);
         FILE* saveFile = fopen(saveFileName, "rb");
         if (saveFile != NULL) {
             filesize = mem->extRamBanksNo * 0x2000;
             assert(fread(mem->extRamBanks, 1, filesize, saveFile) == filesize);
             fclose(saveFile);
         }
+        free(saveFileName);
+
     } else {
         mem->battery = 0;
     }

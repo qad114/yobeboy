@@ -29,7 +29,7 @@ struct Memory {
     int extRamAllocated;
 
     int battery;
-    char romPath[128];
+    char* romPath;
 
     int dmaInProgress;
     uint8_t dmaAddressUpper;

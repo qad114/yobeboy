@@ -117,13 +117,14 @@ int main(int argc, char** argv) {
 int quit(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy, int returnCode) {
     // Dump external RAM to save
     if (mem->battery) {
-        char saveFileName[128];
-        sprintf(saveFileName, "%s.sav", mem->romPath);
+        char* saveFileName = malloc(strlen(mem->romPath) + 5); // freed at the end of this block
+        snprintf(saveFileName, strlen(mem->romPath) + 5, "%s.sav", mem->romPath);
         FILE* file = fopen(saveFileName, "wb+");
         for (int i = 0; i < (mem->extRamBanksNo * 0x2000); ++i) {
             fputc(mem->extRamBanks[i], file);
         }
         fclose(file);
+        free(saveFileName);
     }
 
     // Free everything
@@ -132,6 +133,7 @@ int quit(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy, int returnC
     free(gpu);
     free(mem->romBanks);
     free(mem->extRamBanks);
+    free(mem->romPath);
     free(mem);
     free(timer);
     free(joy);
