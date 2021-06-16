@@ -17,7 +17,7 @@ static uint8_t getColorByte(int color) {
 }
 
 static void renderBackground(GPU* gpu, Memory* mem) {
-    uint8_t* internalFramebuffer = malloc(256 * 256);
+    uint8_t* internalFramebuffer = malloc(256 * 256); // freed at the end of this function
     uint8_t SCX = MEM_getByte(mem, REG_SCX);
     uint8_t SCY = MEM_getByte(mem, REG_SCY);
     uint8_t LCDC = MEM_getByte(mem, REG_LCDC);

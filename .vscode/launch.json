@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/yobemag-debug",
-            "args": ["${workspaceFolder}/roms/smland.gb"],
+            "args": ["${workspaceFolder}/roms/tests/mooneye-gb/emulator-only/mbc1/rom_1Mb.gb"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

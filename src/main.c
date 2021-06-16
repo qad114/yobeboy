@@ -22,22 +22,28 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    Memory* mem = malloc(sizeof(*mem));
+    Memory* mem = malloc(sizeof(*mem)); // freed in quit
     MEM_init(mem);
     MEM_loadROM(mem, argv[1]);
 
-    CPU* cpu = malloc(sizeof(*cpu));
+    printf("ROM info:\n");
+    printf("Title: %s\n", mem->cartridge->title);
+    printf("Cartridge type: 0x%02x\n", mem->cartridge->type);
+    printf("ROM size: 0x%02x\n", mem->cartridge->romSize);
+    printf("RAM size: 0x%02x\n", mem->cartridge->ramSize);
+
+    CPU* cpu = malloc(sizeof(*cpu)); // freed in quit
     CPU_init(cpu);
 
-    GPU* gpu = malloc(sizeof(*gpu));
-    gpu->framebuffer = (uint8_t*) malloc(sizeof(uint8_t) * SCREEN_WIDTH * SCREEN_HEIGHT * 4);
+    GPU* gpu = malloc(sizeof(*gpu)); // freed in quit
+    gpu->framebuffer = (uint8_t*) malloc(sizeof(uint8_t) * SCREEN_WIDTH * SCREEN_HEIGHT * 4); // freed in quit
     gpu->fbUpdated = false;
     gpu->machineCycleCounter = 0;
 
-    Timer* timer = malloc(sizeof(*timer));
+    Timer* timer = malloc(sizeof(*timer)); // freed in quit
     timer->divCounter = 0;
 
-    Joypad* joy = malloc(sizeof(*joy));
+    Joypad* joy = malloc(sizeof(*joy)); // freed in quit
     JOY_init(joy);
 
     #ifndef DISABLE_GRAPHICS
@@ -91,7 +97,7 @@ int main(int argc, char** argv) {
                         }
                         break;
 
-                    default:
+                    //default:
                         //printf("[WARNING] Unhandled SDL Event: %d\n", event.type);
                         //SDL_TEXTIN
                 }
@@ -131,6 +137,7 @@ int quit(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy, int returnC
     free(cpu);
     free(gpu->framebuffer);
     free(gpu);
+    free(mem->cartridge);
     free(mem->romBanks);
     free(mem->extRamBanks);
     free(mem->romPath);

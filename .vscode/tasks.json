@@ -9,7 +9,6 @@
                 "-I${workspaceFolder}/include",
                 "-o",
                 "${workspaceFolder}/yobemag-debug",
-                "${workspaceFolder}/src/common/*.c",
                 "${workspaceFolder}/src/*.c",
                 "-lSDL2"
             ],

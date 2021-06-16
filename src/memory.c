@@ -1,9 +1,13 @@
 #include <assert.h>
+#include <limits.h>
+#include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "constants.h"
+#include "cartridge.h"
 #include "memory.h"
 
 void MEM_init(Memory* mem) {
@@ -58,22 +62,19 @@ void MEM_init(Memory* mem) {
 }
 
 uint8_t MEM_getByte(Memory* mem, uint16_t address) {
-    if (address >= OFFSET_EXTRAM && address < OFFSET_WORKRAMBANK0 && mem->extRamBanksNo == 0) {
+    if (address >= OFFSET_EXTRAM && address < OFFSET_WORKRAMBANK0 && (mem->extRamBanksNo == 0 || !mem->extRamEnabled)) {
         return 0xFF;
+    } else {
+        return *(mem->logicalMemory[address]);
     }
-    return *(mem->logicalMemory[address]);
 }
-
-/*uint8_t* MEM_getReference(Memory* mem, uint16_t address) {
-    return &(mem->data[address]);
-}*/
 
 void MEM_setByte(Memory* mem, uint16_t address, uint8_t value) {
     if ((address > 0xDFFF && address < 0xFE00) || (address > 0xFE9F && address < 0xFF00)) {
         //fprintf(stdout, "[MEM] warning: attempt to write to restricted address %04x\n", address);
     } else if (address < OFFSET_VIDEORAM) {
         // Handle MBC operations
-        MEM_MBC_dispatch(mem, address, value);
+        CART_mbcDispatch(mem, address, value);
 
     } else if (address == REG_DIV) {
         // Reset the DIV register
@@ -88,16 +89,17 @@ void MEM_setByte(Memory* mem, uint16_t address, uint8_t value) {
         // Preserve last 3 bits only (set rest to 1)
         *(mem->logicalMemory[address]) = 0xF8 | (value & 0x7);
 
-    } else if (address >= OFFSET_EXTRAM && address < OFFSET_WORKRAMBANK0 && mem->extRamBanksNo == 0) {
-        // Do nothing
+    /*} else if (address >= OFFSET_EXTRAM && address < OFFSET_WORKRAMBANK0 && (mem->extRamBanksNo == 0 || !mem->extRamEnabled)) {
+        // Do nothing*/
+
+    } else if (address >= OFFSET_EXTRAM && address < OFFSET_WORKRAMBANK0) {
+        if (mem->extRamBanksNo == 0 || !mem->extRamEnabled) {
+
+        } else {
+            *(mem->logicalMemory[address]) = value;
+        }
 
     } else {
-        /*if (address == 0xBFFF) {
-            printf("bfff\n");
-            getchar();
-            printf("%d\n", *(mem->logicalMemory[address]));
-            getchar();
-        }*/
         *(mem->logicalMemory[address]) = value;
     }
 }
@@ -132,33 +134,30 @@ void MEM_loadROM(Memory* mem, const char* path) {
     fseek(file, 0L, SEEK_END);
     size_t filesize = ftell(file);
     rewind(file);
-    mem->romBanksNo = filesize / 0x4000; // TODO: Get the filesize from the ROM header
-    printf("%d\n", mem->romBanksNo);
 
     // Load ROM into banks array
     mem->romBanks = malloc(filesize); // freed in main.c:quit
     assert(fread(mem->romBanks, 1, filesize, file) == filesize);
     fclose(file);
 
+    // Load cartridge data
+    Cartridge* cart = mem->cartridge;
+    mem->cartridge = malloc(sizeof(*cart)); // freed in main.c:quit
+    CART_init(mem->cartridge, mem);
+
     // Set fixed bank to bank 0
     mem->romBank0 = mem->romBanks;
 
     // Set variable bank to 1
-    MEM_setRomBank(mem, 1);
+    mem->romBankN = mem->romBanks + 0x4000;
+
+    // Set number of banks
+    mem->romBanksNo = ((int[]){2, 4, 8, 16, 32, 64, 128, 256, 512})[mem->cartridge->romSize];
+    printf("%d\n", mem->romBanksNo);
 
     // Initialize external RAM
-    mem->extRamEnabled = 0;
-    mem->extRamAllocated = 0;
-
-    switch (mem->romBank0[0x0149]) {
-        case 0: mem->extRamBanksNo = 0; break;
-        case 1: mem->extRamBanksNo = 0; break;
-        case 2: mem->extRamBanksNo = 1; break;
-        case 3: mem->extRamBanksNo = 4; break;
-        case 4: mem->extRamBanksNo = 16; break;
-        case 5: mem->extRamBanksNo = 8; break;
-        default: mem->extRamBanksNo = 0; break;
-    }
+    mem->extRamEnabled = false;
+    mem->extRamBanksNo = ((int[]){0, 0, 1, 4, 16, 8})[mem->cartridge->ramSize];
 
     if (mem->extRamBanksNo != 0) {
         mem->extRamBanks = calloc(0x2000 * mem->extRamBanksNo, 1);
@@ -169,7 +168,11 @@ void MEM_loadROM(Memory* mem, const char* path) {
 
     // Handle saving if MBC includes battery
     uint8_t mbcCode = mem->romBank0[0x0147];
-    if (mbcCode == 0x03) {
+    if (mbcCode == 0x03 || mbcCode == 0x06 || mbcCode == 0x09 
+        || mbcCode == 0x0D || mbcCode == 0x0F || mbcCode == 0x10 
+        || mbcCode == 0x13 || mbcCode == 0x1B || mbcCode == 0x1E 
+        || mbcCode == 0x22
+    ) {
         mem->battery = 1;
         mem->romPath = malloc(strlen(path) + 1); // freed in main.c:quit
         strcpy(mem->romPath, path);
@@ -193,13 +196,33 @@ void MEM_loadROM(Memory* mem, const char* path) {
     for (int i = OFFSET_EXTRAM; i < OFFSET_WORKRAMBANK0; ++i) mem->logicalMemory[i] = &(mem->extRam[i - OFFSET_EXTRAM]);
 }
 
-void MEM_setRomBank(Memory* mem, int bank) {
-    mem->romBankN = mem->romBanks + (0x4000 * bank);
+
+static unsigned int intlog2(unsigned int val) {
+    if (val == 0) return UINT_MAX;
+    if (val == 1) return 0;
+    unsigned int ret = 0;
+    while (val > 1) {
+        val >>= 1;
+        ret++;
+    }
+    return ret;
+}
+
+void MEM_setRomBank(Memory* mem, uint8_t bankNo) {
+    // Mask the bank number to the required no. of bits
+    if (bankNo >= mem->romBanksNo) {
+        unsigned int requiredBits = intlog2(mem->romBanksNo);
+        uint8_t _mask = (0xFF << requiredBits) & 0xFF;
+        uint8_t mask = ~_mask;
+        bankNo &= mask;
+    }
+
+    mem->romBankN = mem->romBanks + (0x4000 * bankNo);
     for (int i = OFFSET_ROMBANKN; i < OFFSET_VIDEORAM; ++i) mem->logicalMemory[i] = &(mem->romBankN[i - OFFSET_ROMBANKN]);
 }
 
-void MEM_setRamBank(Memory* mem, int bank) {
-    mem->extRam = mem->extRamBanks + (0x2000 * bank);
+void MEM_setRamBank(Memory* mem, uint8_t bankNo) {
+    mem->extRam = mem->extRamBanks + (0x2000 * bankNo);
     for (int i = OFFSET_EXTRAM; i < OFFSET_WORKRAMBANK0; ++i) mem->logicalMemory[i] = &(mem->extRam[i - OFFSET_EXTRAM]);
 }
 
@@ -221,90 +244,5 @@ void MEM_dmaUpdate(Memory* mem) {
         mem->dmaInProgress = 0;
     } else {
         ++(mem->dmaPosition);
-    }
-}
-
-void MEM_MBC_dispatch(Memory* mem, uint16_t address, uint8_t value) {
-    switch (MEM_getByte(mem, 0x0147)) {
-        case 0x00: // ROM ONLY
-            // Ignore write attempt
-            break;
-
-        case 0x01: // MBC1
-            MEM_MBC1_handle(mem, address, value);
-            break;
-
-        case 0x02: // MBC1+RAM
-            MEM_MBC1_RAM_handle(mem, address, value);
-            break;
-
-        case 0x03: // MBC1+RAM+BATTERY
-            mem->battery = 1;
-            MEM_MBC1_RAM_handle(mem, address, value);
-            break;
-
-        /*case 0x13:
-            MEM_MBC1_RAM_handle(mem, address, value);
-            break;*/
-
-        default:
-            printf("Unimplemented MBC: %x\n", MEM_getByte(mem, 0x0147));
-            break;
-    }
-}
-
-static uint8_t getBankNo(uint8_t bankNoByte, int totalBanks) {
-    uint8_t bankNo = bankNoByte & 0x1F;
-    if (bankNo >= totalBanks) {
-        int requiredBits = 0;
-        uint8_t bankNoCopy = bankNo;
-        while (bankNoCopy != 0) {
-            ++requiredBits;
-            bankNoCopy = bankNoCopy >> 1;
-        }
-        bankNo &= ~(1 << requiredBits);
-    }
-    if (bankNo == 0) bankNo = 1;
-    return bankNo;
-}
-
-void MEM_MBC1_handle(Memory* mem, uint16_t address, uint8_t value) {
-    if (address >= 0x2000 && address <= 0x3FFF) {
-        // Change the ROM bank number
-        uint8_t bankNo = getBankNo(value, mem->romBanksNo);
-        MEM_setRomBank(mem, bankNo);
-
-    } else if (address >= 0x6000 && address <= 0x7FFF) {
-        // Select the banking mode (TODO)
-    }
-}
-
-void MEM_MBC1_RAM_handle(Memory* mem, uint16_t address, uint8_t value) {
-    if (address <= 0x1FFF) {
-        // Enable external RAM
-        mem->extRamEnabled = (value == 0x0A) ? 1 : 0;
-
-    } else if (address >= 0x2000 && address <= 0x3FFF) {
-        // Change the ROM bank number
-        uint8_t bankNo = getBankNo(value, mem->romBanksNo);
-        MEM_setRomBank(mem, bankNo);
-
-    } else if (address >= 0x4000 && address <= 0x5FFF) {
-        // Change the RAM bank number
-        uint8_t bankNo = value & 0x3;
-        MEM_setRamBank(mem, bankNo);
-
-    } else if (address >= 0x6000 && address <= 0x7FFF) {
-        // Select the banking mode (TODO)
-    }
-}
-
-void MEM_MBC3_RAM_handle(Memory* mem, uint16_t address, uint8_t value) {
-    if (address <= 0x1FFF) {
-        // Enable external RAM
-        mem->extRamEnabled = (value == 0x0A) ? 1 : 0;
-
-    } else if (address >= 2000 && address <= 0x3FFF) {
-        
     }
 }

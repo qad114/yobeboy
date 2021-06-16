@@ -2,13 +2,13 @@ IDIR=include
 SDIR=src
 ODIR=build
 CC=gcc
-CFLAGS=-I$(IDIR) -Wall -Wextra -O3
-LIBS=-lSDL2
+CFLAGS=-I$(IDIR) -Wall -Wextra -pedantic-errors -Wno-unused-parameter -O3
+LIBS=-lm -lSDL2
 
-_DEPS=common/bitwise.h common/endianness.h asm.h constants.h cpu.h gpu.h joypad.h memory.h timer.h
+_DEPS=common/bitwise.h common/endianness.h asm.h cartridge.h constants.h cpu.h gpu.h joypad.h memory.h timer.h
 DEPS=$(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ=cpu.o gpu.o joypad.o main.o memory.o timer.o
+_OBJ=cartridge.o cpu.o gpu.o joypad.o main.o memory.o timer.o
 OBJ=$(patsubst %,$(ODIR)/%,$(_OBJ))
 
 $(ODIR)/%.o: $(SDIR)/%.c $(DEPS)

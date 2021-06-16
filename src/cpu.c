@@ -45,7 +45,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
     if (mCycleTimer == 0) {
         printf("%04x: %02x - %d %d %d %d - ", cpu->PC, cpu->opcode, CPU_getFlagZ(cpu), CPU_getFlagN(cpu), CPU_getFlagH(cpu), CPU_getFlagC(cpu));
         printf("%02x%02x %02x%02x %02x%02x %02x%02x %04x %02x %02x %02x %02x %d ", cpu->A, cpu->F, cpu->B, cpu->C, cpu->D, cpu->E, cpu->H, cpu->L, cpu->SP, MEM_getByte(mem, REG_DIV), MEM_getByte(mem, REG_TIMA), MEM_getByte(mem, REG_TMA), MEM_getByte(mem, REG_TAC), timer->timaCounter);
-        for (uint16_t i = 0xFF80; i <= 0xFF8F; ++i) printf("%02x", MEM_getByte(mem, i)); printf("\n");
+        for (uint16_t i = 0xA000; i <= 0xA00F; ++i) printf("%02x", MEM_getByte(mem, i)); printf("\n");
     }
     #endif
 

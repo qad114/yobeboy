@@ -3,7 +3,9 @@
 
 typedef struct Memory Memory;
 
+#include <stdbool.h>
 #include <stdint.h>
+#include "cartridge.h"
 
 struct Memory {
     uint8_t* logicalMemory[65536];
@@ -25,8 +27,8 @@ struct Memory {
     int romBanksNo;
     uint8_t* extRamBanks;
     int extRamBanksNo;
-    int extRamEnabled;
-    int extRamAllocated;
+    bool extRamEnabled;
+    Cartridge* cartridge; // TODO: should this be separated from memory?
 
     int battery;
     char* romPath;
@@ -38,20 +40,14 @@ struct Memory {
 
 void MEM_init(Memory* mem);
 uint8_t MEM_getByte(Memory* mem, uint16_t address);
-//uint8_t* MEM_getReference(Memory* mem, uint16_t address);
 void MEM_setByte(Memory* mem, uint16_t address, uint8_t value);
 void MEM_forceSetByte(Memory* mem, uint16_t address, uint8_t value);
 void MEM_pushToStack(Memory* mem, uint16_t* SP, uint16_t value);
 uint16_t MEM_popFromStack(Memory* mem, uint16_t* SP);
 void MEM_loadROM(Memory* mem, const char* path);
-void MEM_setRomBank(Memory* mem, int bank);
-void MEM_setRamBank(Memory* mem, int bank);
+void MEM_setRomBank(Memory* mem, uint8_t bankNo);
+void MEM_setRamBank(Memory* mem, uint8_t bankNo);
 void MEM_dmaBegin(Memory* mem, uint8_t addressUpper);
 void MEM_dmaUpdate(Memory* mem);
-
-void MEM_MBC_dispatch(Memory* mem, uint16_t address, uint8_t value);
-void MEM_MBC1_handle(Memory* mem, uint16_t address, uint8_t value);
-void MEM_MBC1_RAM_handle(Memory* mem, uint16_t address, uint8_t value);
-void MEM_MBC3_RAM_handle(Memory* mem, uint16_t address, uint8_t value);
 
 #endif
