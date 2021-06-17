@@ -82,8 +82,9 @@ static void renderWindow(GPU* gpu, Memory* mem) {
         }
     }
 
+    int xLowerBound = (WX - 7) < 0 ? 0 : (WX - 7);
     for (int y = WY; y < 144; ++y) {
-        for (int x = (WX - 7); x < 160; ++x) {
+        for (int x = xLowerBound; x < 160; ++x) {
             int pos = (y * 160 * 4) + (x * 4);
             uint8_t color = getColorByte(getColorNumber(mem, internalFramebuffer[((y - WY) * 256) + (x - WX + 7)], REG_BGP));
             gpu->framebuffer[pos + 0] = color;
