@@ -11,17 +11,16 @@ Run `make` to build for Linux. Windows and macOS instructions will be added late
 ### Blargg CPU instruction tests:
 All individual tests pass except those using the SBC instruction (not sure why yet). The combined test doesn't work as STOP isn't implemented.
 ### Rendering:
-All 3 layers (BG, Window, Objects) are implemented. The positioning of the layers is sometimes wrong (e.g. in Super Mario Land, Mario travels on top of the pipe rather than under it). Per-scanline rendering is not implemented yet, which causes the HUD in Super Mario Land to scroll, among other issues.
+All 3 layers (BG, Window, Objects) are implemented. The positioning of the layers is sometimes wrong (e.g. in Super Mario Land, Mario travels on top of the pipe rather than under it). Scanline-based rendering is only implemented for the Background, and is currently buggy (i.e flickering in some games).
 ### MBCs:
-Only MBC1 is implemented, and not completely (the banking mode can't be changed).
+MBC1 is mostly implemented, and MBC3 is partially implemented (enough to run Pokemon Red/Blue).
 ### Games that are known to be working:
 - Dr. Mario (pill doesn't render correctly)
 - Kirby's Dream Land
 - Metroid 2
-- Pokemon Red (Japanese version which uses MBC1)
+- Pokemon Red
 - Tetris
 - Tetris DX
-- Wario Blast
 
 ## Screenshots
 Note: These may be outdated.
