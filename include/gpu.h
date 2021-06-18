@@ -12,9 +12,12 @@ struct GPU {
     int machineCycleCounter;
     uint8_t* framebuffer;
     bool fbUpdated;
+
+    uint8_t* backgroundMap;
 };
 
+void GPU_init(GPU* gpu);
 void GPU_update(CPU* cpu, GPU* gpu, Memory* mem);
-void GPU_vRamToFrameBuffer(GPU* gpu, Memory* mem);
+void GPU_renderToFrameBuffer(GPU* gpu, Memory* mem);
 
 #endif

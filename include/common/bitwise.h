@@ -11,4 +11,10 @@ static inline uint8_t setBit(uint8_t byte, int bit, int value) {
     return value ? (byte | (1 << bit)) : (byte & ~((uint8_t) (1 << bit)));
 }
 
+/*#define SET_BIT(byte, bit, val) (( \
+    value                          \
+        ? setBit                   \
+        : clearBit                 \
+)(byte, bit))*/
+
 #endif

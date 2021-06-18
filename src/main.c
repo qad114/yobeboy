@@ -11,9 +11,6 @@
 #include "memory.h"
 #include "timer.h"
 
-#define SCREEN_WIDTH 160
-#define SCREEN_HEIGHT 144
-
 int quit(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy, int returnCode);
 
 int main(int argc, char** argv) {
@@ -36,9 +33,7 @@ int main(int argc, char** argv) {
     CPU_init(cpu);
 
     GPU* gpu = malloc(sizeof(*gpu)); // freed in quit
-    gpu->framebuffer = (uint8_t*) malloc(sizeof(uint8_t) * SCREEN_WIDTH * SCREEN_HEIGHT * 4); // freed in quit
-    gpu->fbUpdated = false;
-    gpu->machineCycleCounter = 0;
+    GPU_init(gpu);
 
     Timer* timer = malloc(sizeof(*timer)); // freed in quit
     timer->divCounter = 0;
@@ -49,10 +44,10 @@ int main(int argc, char** argv) {
     #ifndef DISABLE_GRAPHICS
     // Init graphics
     SDL_Init(SDL_INIT_EVERYTHING);
-    SDL_Window* window = SDL_CreateWindow("yobeboy", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_RESIZABLE);
+    SDL_Window* window = SDL_CreateWindow("yobeboy", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, GB_SCREEN_WIDTH, GB_SCREEN_HEIGHT, SDL_WINDOW_RESIZABLE);
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-    SDL_RenderSetLogicalSize(renderer, SCREEN_WIDTH, SCREEN_HEIGHT);
-    SDL_Texture *texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HEIGHT);
+    SDL_RenderSetLogicalSize(renderer, GB_SCREEN_WIDTH, GB_SCREEN_HEIGHT);
+    SDL_Texture *texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING, GB_SCREEN_WIDTH, GB_SCREEN_HEIGHT);
     #endif
 
     SDL_Event event;
@@ -96,15 +91,11 @@ int main(int argc, char** argv) {
                             case SDLK_RIGHT: joy->right = 0; break;
                         }
                         break;
-
-                    //default:
-                        //printf("[WARNING] Unhandled SDL Event: %d\n", event.type);
-                        //SDL_TEXTIN
                 }
             }
 
             // Update the screen
-            SDL_UpdateTexture(texture, NULL, gpu->framebuffer, SCREEN_WIDTH * 4);
+            SDL_UpdateTexture(texture, NULL, gpu->framebuffer, GB_SCREEN_WIDTH * 4);
             SDL_RenderClear(renderer);
             SDL_RenderCopy(renderer, texture, NULL, NULL);
             SDL_RenderPresent(renderer);
@@ -135,6 +126,7 @@ int quit(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy, int returnC
 
     // Free everything
     free(cpu);
+    free(gpu->backgroundMap);
     free(gpu->framebuffer);
     free(gpu);
     free(mem->cartridge);

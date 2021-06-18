@@ -3,6 +3,9 @@
 
 //#define DISABLE_GRAPHICS
 
+#define GB_SCREEN_WIDTH  160
+#define GB_SCREEN_HEIGHT 144
+
 // Jump conditions
 #define PARAM_CC_NZ 100
 #define PARAM_CC_Z  101
