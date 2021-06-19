@@ -1084,7 +1084,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0xDF: // RST 18H (16)
-                ASM_RST_n(cpu, mem, 0x32);
+                ASM_RST_n(cpu, mem, 0x18);
                 mCycleTimer = 3;
                 break;
 
@@ -1177,7 +1177,7 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
                 break;
 
             case 0xF7: // RST 30H (16)
-                ASM_RST_n(cpu, mem, 0x32);
+                ASM_RST_n(cpu, mem, 0x30);
                 mCycleTimer = 3;
                 break;
 
