@@ -9,7 +9,7 @@ Run `make` to build for Linux. Windows and macOS instructions will be added late
 
 ## Status
 ### Blargg CPU instruction tests:
-All individual tests pass except those using the SBC instruction (not sure why yet). The combined test doesn't work as STOP isn't implemented.
+All `cpu_instr` tests pass except those using the SBC instruction (not sure why yet). The `instr_timing` test passes as well.
 ### Rendering:
 All 3 layers (BG, Window, Objects) are implemented. The positioning of the layers is sometimes wrong (e.g. in Super Mario Land, Mario travels on top of the pipe rather than under it). Scanline-based rendering is only implemented for the Background, and is currently buggy (i.e flickering in some games).
 ### MBCs:
