@@ -26,18 +26,20 @@ static uint8_t getColorByte(int color) {
 
 static void updateBackgroundMap(GPU* gpu, Memory* mem) {
     uint8_t LCDC = MEM_getByte(mem, REG_LCDC);
+    uint8_t SCY = MEM_getByte(mem, REG_SCY);
+    uint8_t LY = MEM_getByte(mem, REG_LY);
+    int mapY = (SCY + LY) / 8;
+    if (mapY >= 32) mapY -= 32;
 
-    for (int mapY = 0; mapY < 32; ++mapY) {
-        for (int mapX = 0; mapX < 32; ++mapX) {
-            uint16_t address = (getBit(LCDC, 3) ? 0x9C00 : 0x9800) + (mapY * 0x20) + mapX;
-            uint16_t tileAddress = getBit(LCDC, 4)
-                ? 0x8000 + (MEM_getByte(mem, address) * 0x10)
-                : 0x9000 + (((int8_t) (MEM_getByte(mem, address))) * 0x10);
+    for (int mapX = 0; mapX < 32; ++mapX) {
+        uint16_t address = (getBit(LCDC, 3) ? 0x9C00 : 0x9800) + (mapY * 0x20) + mapX;
+        uint16_t tileAddress = getBit(LCDC, 4)
+            ? 0x8000 + (MEM_getByte(mem, address) * 0x10)
+            : 0x9000 + (((int8_t) (MEM_getByte(mem, address))) * 0x10);
 
-            uint8_t* srcAddress = mem->videoRam + tileAddress - OFFSET_VIDEORAM;
-            uint8_t* targetAddress = gpu->backgroundMap + (mapY * 16 * 32) + (mapX * 16);
-            memcpy(targetAddress, srcAddress, 16);
-        }
+        uint8_t* srcAddress = mem->videoRam + tileAddress - OFFSET_VIDEORAM;
+        uint8_t* targetAddress = gpu->backgroundMap + (mapY * 16 * 32) + (mapX * 16);
+        memcpy(targetAddress, srcAddress, 16);
     }
 }
 
