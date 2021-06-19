@@ -57,6 +57,10 @@ int main(int argc, char** argv) {
         if (!res) {
             return quit(cpu, gpu, mem, timer, joy, 1);
         }
+        GPU_update(cpu, gpu, mem);
+        TIMER_update(cpu, mem, timer);
+        MEM_dmaUpdate(mem);
+        JOY_update(joy, mem);
 
         #ifndef DISABLE_GRAPHICS
         if (gpu->fbUpdated) {

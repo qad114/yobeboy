@@ -2560,35 +2560,5 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
         }
     }
 
-    // Update the states of other components (GPU, timer, joypad, DMA)
-    GPU_update(cpu, gpu, mem);
-    TIMER_update(cpu, mem, timer);
-    MEM_dmaUpdate(mem);
-    //printf("%x\n", MEM_getByte(mem, REG_DIV));
-
-    // Update the joypad register (temporary, move to joypad)
-    MEM_setByte(mem, REG_JOYP, MEM_getByte(mem, REG_JOYP) | 0xCF);
-
-    if (!getBit(MEM_getByte(mem, REG_JOYP), 5)) {
-        // Action buttons
-        if (joy->a) MEM_setByte(mem, REG_JOYP, setBit(MEM_getByte(mem, REG_JOYP), 0, 0));
-        if (joy->b) MEM_setByte(mem, REG_JOYP, setBit(MEM_getByte(mem, REG_JOYP), 1, 0));
-        if (joy->select) MEM_setByte(mem, REG_JOYP, setBit(MEM_getByte(mem, REG_JOYP), 2, 0));
-        if (joy->start) MEM_setByte(mem, REG_JOYP, setBit(MEM_getByte(mem, REG_JOYP), 3, 0));
-    }
-    if (!getBit(MEM_getByte(mem, REG_JOYP), 4)) {
-        // Direction buttons
-        if (joy->right) MEM_setByte(mem, REG_JOYP, setBit(MEM_getByte(mem, REG_JOYP), 0, 0));
-        if (joy->left) MEM_setByte(mem, REG_JOYP, setBit(MEM_getByte(mem, REG_JOYP), 1, 0));
-        if (joy->up) MEM_setByte(mem, REG_JOYP, setBit(MEM_getByte(mem, REG_JOYP), 2, 0));
-        if (joy->down) MEM_setByte(mem, REG_JOYP, setBit(MEM_getByte(mem, REG_JOYP), 3, 0));
-    }
-
-    if ((MEM_getByte(mem, REG_JOYP) & 0xF) != 0xF) {
-        // Request joypad interrupt
-        //printf("A button was pressed: %x %d\n", MEM_getByte(mem, REG_JOYP), joy->a);
-        MEM_setByte(mem, REG_IF, MEM_getByte(mem, REG_IF) | 0x10);
-    }
-
     return 1; // success
 }

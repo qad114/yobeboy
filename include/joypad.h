@@ -8,6 +8,6 @@ struct Joypad {
 };
 
 void JOY_init(Joypad* joy);
-void JOY_update();
+void JOY_update(Joypad* joy, Memory* mem);
 
 #endif
