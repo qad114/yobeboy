@@ -14,14 +14,27 @@ void GPU_init(GPU* gpu) {
     gpu->machineCycleCounter = 0;
 
     gpu->backgroundMap = malloc(32 * 32 * 16);
+
+    // White - #9BBC0F
+    gpu->colorPalette[0][0] = 0x9B;
+    gpu->colorPalette[0][1] = 0xBC;
+    gpu->colorPalette[0][2] = 0x0F;
+    // Light grey - #8BAC0F
+    gpu->colorPalette[1][0] = 0x8B;
+    gpu->colorPalette[1][1] = 0xAC;
+    gpu->colorPalette[1][2] = 0x0F;
+    // Dark grey - #306230
+    gpu->colorPalette[2][0] = 0x30;
+    gpu->colorPalette[2][1] = 0x62;
+    gpu->colorPalette[2][2] = 0x30;
+    // Black - #0F380F
+    gpu->colorPalette[3][0] = 0x0F;
+    gpu->colorPalette[3][1] = 0x38;
+    gpu->colorPalette[3][2] = 0x0F;
 }
 
 static int getColorNumber(Memory* mem, int index, uint16_t paletteAddress) {
     return (MEM_getByte(mem, paletteAddress) & (0x3 << (index * 2))) >> (index * 2);
-}
-
-static uint8_t getColorByte(int color) {
-    return (uint8_t []){0xFF, 0xC2, 0x40, 0x00}[color];
 }
 
 static void updateBackgroundMap(GPU* gpu, Memory* mem) {
@@ -64,7 +77,7 @@ static void renderBgScanline(GPU* gpu, Memory* mem, int line) {
     uint8_t byte2 = firstChunk[1];
     for (int i = pixelXOffset; i < 8; ++i) {
         int color = getBit(byte2, 7 - i) << 1 | getBit(byte1, 7 - i);
-        memset(linePtr + ((i - pixelXOffset) * 4), getColorByte(getColorNumber(mem, color, REG_BGP)), 3);
+        memcpy(linePtr + ((i - pixelXOffset) * 4), &(gpu->colorPalette[getColorNumber(mem, color, REG_BGP)]), 3);
         linePtr[((i - pixelXOffset) * 4) + 3] = 0xFF;
     }
     linePtr += ((8 - pixelXOffset) * 4);
@@ -75,7 +88,7 @@ static void renderBgScanline(GPU* gpu, Memory* mem, int line) {
         uint8_t* chunk = mapStartPtr + (tileNo * 16) + (pixelYOffset * 2);
         for (int i = 0; i < 8; ++i) {
             int color = getBit(chunk[1], 7 - i) << 1 | getBit(chunk[0], 7 - i);
-            memset(linePtr + ((i) * 4), getColorByte(getColorNumber(mem, color, REG_BGP)), 3);
+            memcpy(linePtr + ((i) * 4), &(gpu->colorPalette[getColorNumber(mem, color, REG_BGP)]), 3);
             linePtr[((i) * 4) + 3] = 0xFF;
         }
         linePtr += (8 * 4);
@@ -111,10 +124,12 @@ static void renderWindow(GPU* gpu, Memory* mem) {
     for (int y = WY; y < 144; ++y) {
         for (int x = xLowerBound; x < 160; ++x) {
             int pos = (y * 160 * 4) + (x * 4);
-            uint8_t color = getColorByte(getColorNumber(mem, internalFramebuffer[((y - WY) * 256) + (x - WX + 7)], REG_BGP));
-            gpu->framebuffer[pos + 0] = color;
-            gpu->framebuffer[pos + 1] = color;
-            gpu->framebuffer[pos + 2] = color;
+            int color = getColorNumber(mem, internalFramebuffer[((y - WY) * 256) + (x - WX + 7)], REG_BGP);
+            //gpu->framebuffer[pos + 0] = color;
+            //gpu->framebuffer[pos + 1] = color;
+            //gpu->framebuffer[pos + 2] = color;
+            //gpu->framebuffer[pos + 3] = 0xFF;
+            memcpy(gpu->framebuffer + pos, &(gpu->colorPalette[color]), 3);
             gpu->framebuffer[pos + 3] = 0xFF;
         }
     }
@@ -158,7 +173,7 @@ static void renderObjects(GPU* gpu, Memory* mem) {
                 int pos = offset + (i * 4);
                 if (pos < 0 || pos >= (160 * 144 * 4) || xPos + i < 0 || xPos + i >= 160) continue; // TODO: Removing the first check should work, but doesn't - possible bug
                 int color = getColorNumber(mem, pixels[i], (getBit(flags, 4) ? REG_OBP1 : REG_OBP0));
-                memset(gpu->framebuffer + pos, getColorByte(color), 3);
+                memcpy(gpu->framebuffer + pos, &(gpu->colorPalette[color]), 3);
                 gpu->framebuffer[pos + 3] = 0xFF;
             }
 
@@ -221,10 +236,11 @@ void GPU_renderToFrameBuffer(GPU* gpu, Memory* mem) {
     uint8_t LCDC = MEM_getByte(mem, REG_LCDC);
     if (!getBit(LCDC, 7)) {
         // LCD disabled, return a blank screen
-        for (int i = 0; i < (160 * 144 * 4); ++i) {
-            gpu->framebuffer[i] = 0xFF;
-            gpu->fbUpdated = true;
+        for (int i = 0; i < (160 * 144 * 4); i += 4) {
+            memcpy(gpu->framebuffer + i, &(gpu->colorPalette[0]), 3);
+            gpu->framebuffer[i + 3] = 0xFF;
         }
+        gpu->fbUpdated = true;
         return;
     }
 
