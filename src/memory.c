@@ -11,26 +11,9 @@
 #include "memory.h"
 
 void MEM_init(Memory* mem) {
-    // Map memory sections to logical memory array
-    for (int i = OFFSET_ROMBANK0; i < OFFSET_ROMBANKN; ++i) mem->logicalMemory[i] = &(mem->romBank0[i - OFFSET_ROMBANK0]);
-    for (int i = OFFSET_ROMBANKN; i < OFFSET_VIDEORAM; ++i) mem->logicalMemory[i] = &(mem->romBankN[i - OFFSET_ROMBANKN]);
-    for (int i = OFFSET_VIDEORAM; i < OFFSET_EXTRAM; ++i) mem->logicalMemory[i] = &(mem->videoRam[i - OFFSET_VIDEORAM]);
-    for (int i = OFFSET_EXTRAM; i < OFFSET_WORKRAMBANK0; ++i) mem->logicalMemory[i] = &(mem->extRam[i - OFFSET_EXTRAM]);
-    for (int i = OFFSET_WORKRAMBANK0; i < OFFSET_WORKRAMBANK1; ++i) mem->logicalMemory[i] = &(mem->workRamBank0[i - OFFSET_WORKRAMBANK0]);
-    for (int i = OFFSET_WORKRAMBANK1; i < OFFSET_ECHORAM; ++i) mem->logicalMemory[i] = &(mem->workRamBank1[i - OFFSET_WORKRAMBANK1]);
-    for (int i = OFFSET_ECHORAM; i < OFFSET_SPRITEATTRIBUTETABLE; ++i) mem->logicalMemory[i] = &(mem->echoRam[i - OFFSET_ECHORAM]);
-    for (int i = OFFSET_SPRITEATTRIBUTETABLE; i < OFFSET_UNUSABLE; ++i) mem->logicalMemory[i] = &(mem->spriteAttributeTable[i - OFFSET_SPRITEATTRIBUTETABLE]);
-    for (int i = OFFSET_UNUSABLE; i < OFFSET_IOREGISTERS; ++i) mem->logicalMemory[i] = &(mem->unusable[i - OFFSET_UNUSABLE]);
-    for (int i = OFFSET_IOREGISTERS; i < OFFSET_HIGHRAM; ++i) mem->logicalMemory[i] = &(mem->ioRegisters[i - OFFSET_IOREGISTERS]);
-    for (int i = OFFSET_HIGHRAM; i < REG_IE; ++i) mem->logicalMemory[i] = &(mem->highRam[i - OFFSET_HIGHRAM]);
-    mem->logicalMemory[0xFFFF] = &(mem->IE);
-
     // Zero out memory
-    for (int i = OFFSET_VIDEORAM; i < OFFSET_EXTRAM; ++i) {
-        *(mem->logicalMemory[i]) = 0;
-    }
-    for (int i = OFFSET_WORKRAMBANK0; i <= 0xFFFF; ++i) {
-        *(mem->logicalMemory[i]) = 0;
+    for (int i = 0; i < 0x10000; ++i) {
+        mem->logicalMemory[i] = 0;
     }
 
     // Set special registers
@@ -50,7 +33,7 @@ void MEM_init(Memory* mem) {
     mem->ioRegisters[REG_NR51 - OFFSET_IOREGISTERS] = 0xF3;
     mem->ioRegisters[REG_NR52 - OFFSET_IOREGISTERS] = 0xF1;
     mem->ioRegisters[REG_LCDC - OFFSET_IOREGISTERS] = 0x91;
-    mem->ioRegisters[REG_BGP  - OFFSET_IOREGISTERS]  = 0xFC;
+    mem->ioRegisters[REG_BGP  - OFFSET_IOREGISTERS] = 0xFC;
     mem->ioRegisters[REG_OBP0 - OFFSET_IOREGISTERS] = 0xFF;
     mem->ioRegisters[REG_OBP1 - OFFSET_IOREGISTERS] = 0xFF;
 
@@ -62,10 +45,22 @@ void MEM_init(Memory* mem) {
 }
 
 uint8_t MEM_getByte(Memory* mem, uint16_t address) {
-    if (address >= OFFSET_EXTRAM && address < OFFSET_WORKRAMBANK0 && (mem->extRamBanksNo == 0 || !mem->extRamEnabled)) {
-        return 0xFF;
+    if (address < OFFSET_ROMBANKN) {
+        // ROM bank 0
+        return mem->romBank0[address - OFFSET_ROMBANK0];
+
+    } else if (address < OFFSET_VIDEORAM) {
+        // ROM bank N
+        return mem->romBankN[address - OFFSET_ROMBANKN];
+
+    } else if (address >= OFFSET_EXTRAM && address < OFFSET_WORKRAMBANK0) {
+        // External RAM
+        return mem->extRamBanksNo != 0 && mem->extRamEnabled
+            ? mem->extRam[address - OFFSET_EXTRAM]
+            : 0xFF;
+
     } else {
-        return *(mem->logicalMemory[address]);
+        return mem->logicalMemory[address];
     }
 }
 
@@ -76,42 +71,36 @@ void MEM_setByte(Memory* mem, uint16_t address, uint8_t value) {
         // Handle MBC operations
         CART_mbcDispatch(mem, address, value);
 
+    } else if (address >= OFFSET_EXTRAM && address < OFFSET_WORKRAMBANK0 && mem->extRamBanksNo != 0 && mem->extRamEnabled) {
+        //printf("extram write %d\n", mem->extRamBanksNo);
+        //getchar();
+        // Set external RAM
+        mem->extRam[address - OFFSET_EXTRAM] = value;
+
     } else if (address == REG_DIV) {
         // Reset the DIV register
-        *(mem->logicalMemory[REG_DIV]) = 0;
+        mem->logicalMemory[REG_DIV] = 0;
 
     } else if (address == REG_DMA) {
         // Initiate a DMA transfer
         MEM_dmaBegin(mem, value);
-        *(mem->logicalMemory[address]) = value;
+        mem->logicalMemory[address] = value;
 
     } else if (address == REG_TAC) {
         // Preserve last 3 bits only (set rest to 1)
-        *(mem->logicalMemory[address]) = 0xF8 | (value & 0x7);
-
-    /*} else if (address >= OFFSET_EXTRAM && address < OFFSET_WORKRAMBANK0 && (mem->extRamBanksNo == 0 || !mem->extRamEnabled)) {
-        // Do nothing*/
-
-    } else if (address >= OFFSET_EXTRAM && address < OFFSET_WORKRAMBANK0) {
-        if (mem->extRamBanksNo == 0 || !mem->extRamEnabled) {
-
-        } else {
-            *(mem->logicalMemory[address]) = value;
-        }
+        mem->logicalMemory[address] = 0xF8 | (value & 0x7);
 
     } else {
-        *(mem->logicalMemory[address]) = value;
+        mem->logicalMemory[address] = value;
     }
 }
 
 
 void MEM_forceSetByte(Memory* mem, uint16_t address, uint8_t value) {
-    *(mem->logicalMemory[address]) = value;
+    mem->logicalMemory[address] = value;
 }
 
 void MEM_pushToStack(Memory* mem, uint16_t* SP, uint16_t value) {
-    //mem->data[*SP - 1] = (value & 0xFF00) >> 8;
-    //mem->data[*SP - 2] = value & 0x00FF;
     MEM_setByte(mem, *SP - 1, (value & 0xFF00) >> 8);
     MEM_setByte(mem, *SP - 2, value & 0x00FF);
     *SP -= 2;
@@ -128,7 +117,7 @@ void MEM_loadROM(Memory* mem, const char* path) {
     // Open file and get size
     FILE* file = fopen(path, "rb");
     if (file == NULL) {
-        perror("error while opening rom");
+        perror("Error while opening ROM");
         exit(1);
     }
     fseek(file, 0L, SEEK_END);
@@ -189,11 +178,6 @@ void MEM_loadROM(Memory* mem, const char* path) {
     } else {
         mem->battery = 0;
     }
-
-    // Remap logical addresses
-    for (int i = OFFSET_ROMBANK0; i < OFFSET_ROMBANKN; ++i) mem->logicalMemory[i] = &(mem->romBank0[i - OFFSET_ROMBANK0]);
-    for (int i = OFFSET_ROMBANKN; i < OFFSET_VIDEORAM; ++i) mem->logicalMemory[i] = &(mem->romBankN[i - OFFSET_ROMBANKN]);
-    for (int i = OFFSET_EXTRAM; i < OFFSET_WORKRAMBANK0; ++i) mem->logicalMemory[i] = &(mem->extRam[i - OFFSET_EXTRAM]);
 }
 
 
@@ -218,12 +202,12 @@ void MEM_setRomBank(Memory* mem, uint8_t bankNo) {
     }
 
     mem->romBankN = mem->romBanks + (0x4000 * bankNo);
-    for (int i = OFFSET_ROMBANKN; i < OFFSET_VIDEORAM; ++i) mem->logicalMemory[i] = &(mem->romBankN[i - OFFSET_ROMBANKN]);
 }
 
 void MEM_setRamBank(Memory* mem, uint8_t bankNo) {
-    mem->extRam = mem->extRamBanks + (0x2000 * bankNo);
-    for (int i = OFFSET_EXTRAM; i < OFFSET_WORKRAMBANK0; ++i) mem->logicalMemory[i] = &(mem->extRam[i - OFFSET_EXTRAM]);
+    if (bankNo < mem->extRamBanksNo) {
+        mem->extRam = mem->extRamBanks + (0x2000 * bankNo);
+    }
 }
 
 // Initiate a DMA transfer

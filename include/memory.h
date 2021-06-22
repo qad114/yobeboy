@@ -8,20 +8,29 @@ typedef struct Memory Memory;
 #include "cartridge.h"
 
 struct Memory {
-    uint8_t* logicalMemory[65536];
-
+    // Fixed memory regions (note: regions marked with _padding_ are not written to - sepatate pointers are used below)
+    union {
+        struct {
+            uint8_t _padding_romBank0[0x4000];
+            uint8_t _padding_romBankN[0x4000];
+            uint8_t videoRam[0x2000];
+            uint8_t _padding_extRam[0x2000];
+            uint8_t workRamBank0[0x1000];
+            uint8_t workRamBank1[0x1000];
+            uint8_t echoRam[0x1E00];
+            uint8_t spriteAttributeTable[0x00A0];
+            uint8_t unusable[0x0060];
+            uint8_t ioRegisters[0x0080];
+            uint8_t highRam[0x007F];
+            uint8_t IE;
+        };
+        uint8_t logicalMemory[0x10000];
+    };
+    
+    // Switchable banks
     uint8_t* romBank0;
     uint8_t* romBankN;
-    uint8_t videoRam[0x1FFF + 1];
     uint8_t* extRam;
-    uint8_t workRamBank0[0x0FFF + 1];
-    uint8_t workRamBank1[0x0FFF + 1];
-    uint8_t echoRam[0x1DFF + 1];
-    uint8_t spriteAttributeTable[0x009F + 1];
-    uint8_t unusable[0x005F + 1];
-    uint8_t ioRegisters[0x007F + 1];
-    uint8_t highRam[0x007E + 1];
-    uint8_t IE;
 
     uint8_t* romBanks;
     int romBanksNo;
