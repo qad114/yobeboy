@@ -14,6 +14,7 @@ void GPU_init(GPU* gpu) {
     gpu->machineCycleCounter = 0;
 
     gpu->backgroundMap = malloc(32 * 32 * 16);
+    gpu->windowMap = malloc(32 * 32 * 16);
 
     // White - #9BBC0F
     gpu->colorPalette[0][0] = 0x9B;
@@ -125,10 +126,6 @@ static void renderWindow(GPU* gpu, Memory* mem) {
         for (int x = xLowerBound; x < 160; ++x) {
             int pos = (y * 160 * 4) + (x * 4);
             int color = getColorNumber(mem, internalFramebuffer[((y - WY) * 256) + (x - WX + 7)], REG_BGP);
-            //gpu->framebuffer[pos + 0] = color;
-            //gpu->framebuffer[pos + 1] = color;
-            //gpu->framebuffer[pos + 2] = color;
-            //gpu->framebuffer[pos + 3] = 0xFF;
             memcpy(gpu->framebuffer + pos, &(gpu->colorPalette[color]), 3);
             gpu->framebuffer[pos + 3] = 0xFF;
         }
@@ -182,52 +179,71 @@ static void renderObjects(GPU* gpu, Memory* mem) {
     }
 }
 
-// Update the GPU and display registers' states (runs every machine cycle)
+// Update the GPU state (runs every machine cycle)
 void GPU_update(CPU* cpu, GPU* gpu, Memory* mem) {
-    // Update LY (every 114 cycles)
-    if (gpu->machineCycleCounter == 114) {
-        gpu->machineCycleCounter = 0;
-        uint8_t LY = MEM_getByte(mem, REG_LY);
+    uint8_t LY = MEM_getByte(mem, REG_LY);
+    uint8_t STAT = MEM_getByte(mem, REG_STAT);
 
-        if (LY == 144) {
-            // VBlank period started
-            uint8_t STAT = MEM_getByte(mem, REG_STAT);
-            MEM_setByte(mem, REG_STAT, (STAT & 0xFC) | 1); // Mode 1 (VBlank)
+    if (LY < 144) {
+        // Cycle through modes 2, 3, 0
+        switch (gpu->machineCycleCounter) {
+            case 0: // Mode 2
+                MEM_setByte(mem, REG_STAT, (STAT & 0xFC) | 2);
+                break;
+
+            case 19: // Mode 3
+                MEM_setByte(mem, REG_STAT, (STAT & 0xFC) | 3);
+                break;
+
+            case 61: // Mode 0 (HBlank)
+                MEM_setByte(mem, REG_STAT, (STAT & 0xFC) | 0);
+                updateBackgroundMap(gpu, mem);
+                renderBgScanline(gpu, mem, MEM_getByte(mem, REG_LY));
+                break;
+
+            case 113: // Reset counter and go to next line
+                MEM_setByte(mem, REG_LY, LY + 1);
+                MEM_setByte(mem, REG_STAT, (STAT & 0xFC) | 2);
+                break;
+
+            default:
+                break;
+        }
+
+    } else if (LY == 144) {
+        // Mode 1 (VBlank)
+        MEM_setByte(mem, REG_STAT, (STAT & 0xFC) | 1);
+        if (gpu->machineCycleCounter == 113) {
             GPU_renderToFrameBuffer(gpu, mem);
             MEM_setByte(mem, REG_IF, MEM_getByte(mem, REG_IF) | 0x1);
             MEM_setByte(mem, REG_LY, LY + 1);
+        }
 
-        } else if (LY == 153) {
-            // VBlank period ended
-            uint8_t STAT = MEM_getByte(mem, REG_STAT);
-            MEM_setByte(mem, REG_STAT, (STAT & 0xFC) | 2); // Mode 2
+    } else if (LY == 154) {
+        // VBlank end
+        if (gpu->machineCycleCounter == 113) {
             MEM_setByte(mem, REG_LY, 0);
+        }
 
-        } else {
-            // Go to next line
+    } else {
+        if (gpu->machineCycleCounter == 113) {
             MEM_setByte(mem, REG_LY, LY + 1);
         }
-    } else {
-        ++(gpu->machineCycleCounter);
     }
 
-    // Update STAT register mid-scanline
-    uint8_t STAT = MEM_getByte(mem, REG_STAT);
-    if (gpu->machineCycleCounter == 20) {
-        MEM_setByte(mem, REG_STAT, (STAT & 0xFC) | 3); // Mode 3
-    } else if (gpu->machineCycleCounter == 62) {
-        MEM_setByte(mem, REG_STAT, (STAT & 0xFC) | 0); // Mode 0 (HBlank)
-        updateBackgroundMap(gpu, mem);
-        renderBgScanline(gpu, mem, MEM_getByte(mem, REG_LY));
-    }
-
-    // Check if LYC=LY. If true, request STAT interrupt
+    // Check for LYC=LY
     STAT = MEM_getByte(mem, REG_STAT);
     if (MEM_getByte(mem, REG_LYC) == MEM_getByte(mem, REG_LY)) {
         MEM_setByte(mem, REG_STAT, setBit(STAT, 2, 1));
         MEM_setByte(mem, REG_IF, setBit(MEM_getByte(mem, REG_IF), 1, 1));
     } else {
         MEM_setByte(mem, REG_STAT, setBit(STAT, 2, 0));
+    }
+
+    if (gpu->machineCycleCounter == 113) {
+        gpu->machineCycleCounter = 0;
+    } else {
+        ++(gpu->machineCycleCounter);
     }
 }
 
