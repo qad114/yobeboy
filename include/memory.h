@@ -48,6 +48,7 @@ struct Memory {
 };
 
 void MEM_init(Memory* mem);
+void MEM_destroy(Memory* mem);
 uint8_t MEM_getByte(Memory* mem, uint16_t address);
 void MEM_setByte(Memory* mem, uint16_t address, uint8_t value);
 void MEM_forceSetByte(Memory* mem, uint16_t address, uint8_t value);

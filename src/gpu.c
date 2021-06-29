@@ -34,22 +34,31 @@ void GPU_init(GPU* gpu) {
     gpu->colorPalette[3][2] = 0x0F;
 }
 
+void GPU_destroy(GPU* gpu) {
+    free(gpu->backgroundMap);
+    gpu->backgroundMap = NULL;
+    free(gpu->framebuffer);
+    gpu->framebuffer = NULL;
+    free(gpu);
+    gpu = NULL;
+}
+
 static int getColorNumber(Memory* mem, int index, uint16_t paletteAddress) {
-    return (MEM_getByte(mem, paletteAddress) & (0x3 << (index * 2))) >> (index * 2);
+    return (mem->logicalMemory[paletteAddress] & (0x3 << (index * 2))) >> (index * 2);
 }
 
 static void updateBackgroundMap(GPU* gpu, Memory* mem) {
-    uint8_t LCDC = MEM_getByte(mem, REG_LCDC);
-    uint8_t SCY = MEM_getByte(mem, REG_SCY);
-    uint8_t LY = MEM_getByte(mem, REG_LY);
+    uint8_t LCDC = mem->logicalMemory[REG_LCDC];
+    uint8_t SCY = mem->logicalMemory[REG_SCY];
+    uint8_t LY = mem->logicalMemory[REG_LY];
     int mapY = (SCY + LY) / 8;
     if (mapY >= 32) mapY -= 32;
 
     for (int mapX = 0; mapX < 32; ++mapX) {
         uint16_t address = (getBit(LCDC, 3) ? 0x9C00 : 0x9800) + (mapY * 0x20) + mapX;
         uint16_t tileAddress = getBit(LCDC, 4)
-            ? 0x8000 + (MEM_getByte(mem, address) * 0x10)
-            : 0x9000 + (((int8_t) (MEM_getByte(mem, address))) * 0x10);
+            ? 0x8000 + (mem->logicalMemory[address] * 0x10)
+            : 0x9000 + (((int8_t) (mem->logicalMemory[address])) * 0x10);
 
         uint8_t* srcAddress = mem->videoRam + tileAddress - OFFSET_VIDEORAM;
         uint8_t* targetAddress = gpu->backgroundMap + (mapY * 16 * 32) + (mapX * 16);
@@ -59,8 +68,8 @@ static void updateBackgroundMap(GPU* gpu, Memory* mem) {
 
 static void renderBgScanline(GPU* gpu, Memory* mem, int line) {
     if (line >= GB_SCREEN_HEIGHT) return; // VBlank period
-    uint8_t SCX = MEM_getByte(mem, REG_SCX);
-    uint8_t SCY = MEM_getByte(mem, REG_SCY);
+    uint8_t SCX = mem->logicalMemory[REG_SCX];
+    uint8_t SCY = mem->logicalMemory[REG_SCY];
 
     int tileXOffset = SCX / 8, tileYOffset = (SCY + line) / 8;
     int pixelXOffset = SCX % 8, pixelYOffset = (SCY + line) % 8;
@@ -98,20 +107,20 @@ static void renderBgScanline(GPU* gpu, Memory* mem, int line) {
 
 static void renderWindow(GPU* gpu, Memory* mem) {
     uint8_t* internalFramebuffer = malloc(256 * 256); // freed at the end of this function
-    uint8_t WX = MEM_getByte(mem, REG_WX);
-    uint8_t WY = MEM_getByte(mem, REG_WY);
-    uint8_t LCDC = MEM_getByte(mem, REG_LCDC);
+    uint8_t WX = mem->logicalMemory[REG_WX];
+    uint8_t WY = mem->logicalMemory[REG_WY];
+    uint8_t LCDC = mem->logicalMemory[REG_LCDC];
 
     for (int mapY = 0; mapY < 32; ++mapY) {
         for (int mapX = 0; mapX < 32; ++mapX) {
             uint16_t address = (getBit(LCDC, 6) ? 0x9C00 : 0x9800) + (mapY * 0x20) + mapX;
             uint16_t tileAddress = getBit(LCDC, 4)
-                ? 0x8000 + (MEM_getByte(mem, address) * 0x10)
-                : 0x9000 + (((int8_t) (MEM_getByte(mem, address))) * 0x10);
+                ? 0x8000 + (mem->logicalMemory[address] * 0x10)
+                : 0x9000 + (((int8_t) (mem->logicalMemory[address])) * 0x10);
 
             for (int i = 0; i < 16; i += 2) {
-                uint8_t byte1 = MEM_getByte(mem, tileAddress + i);
-                uint8_t byte2 = MEM_getByte(mem, tileAddress + i + 1);
+                uint8_t byte1 = mem->logicalMemory[tileAddress + i];
+                uint8_t byte2 = mem->logicalMemory[tileAddress + i + 1];
                 
                 int offset = (mapY * 8 * 256) + (((int)(i / 2)) * 256) + (mapX * 8);
                 for (int i = 0; i < 8; ++i) {
@@ -138,24 +147,24 @@ static void renderWindow(GPU* gpu, Memory* mem) {
 
 static void renderObjects(GPU* gpu, Memory* mem) {
     for (int i = 0xFE00; i < 0xFE9F; i += 4) {
-        int yPos = MEM_getByte(mem, i) - 16;
-        int xPos = MEM_getByte(mem, i + 1) - 8;
+        int yPos = mem->logicalMemory[i] - 16;
+        int xPos = mem->logicalMemory[i + 1] - 8;
         if (xPos >= 160) continue;
 
-        int tileIndex = MEM_getByte(mem, i + 2);
+        int tileIndex = mem->logicalMemory[i + 2];
         uint16_t tileAddress = 0x8000 + (tileIndex * 0x10);
-        uint8_t flags = MEM_getByte(mem, i + 3);
+        uint8_t flags = mem->logicalMemory[i + 3];
         //int underBg = getBit(flags, 7);
         int yFlip = getBit(flags, 6);
         int xFlip = getBit(flags, 5);
 
         //if (underBg) continue;
 
-        uint8_t longObjectMode = getBit(MEM_getByte(mem, REG_LCDC), 2); // Is 8x16 mode active?
+        uint8_t longObjectMode = getBit(mem->logicalMemory[REG_LCDC], 2); // Is 8x16 mode active?
         int rowIndex = yFlip ? (longObjectMode ? 31 : 15) : 0;
         for (int i = 0; i < (longObjectMode ? 32 : 16); i += 2) {
-            uint8_t byte1 = MEM_getByte(mem, tileAddress + i);
-            uint8_t byte2 = MEM_getByte(mem, tileAddress + i + 1);
+            uint8_t byte1 = mem->logicalMemory[tileAddress + i];
+            uint8_t byte2 = mem->logicalMemory[tileAddress + i + 1];
 
             uint8_t pixels[8];
             int pixelIndex = (xFlip ? 7 : 0);
@@ -181,63 +190,64 @@ static void renderObjects(GPU* gpu, Memory* mem) {
 
 // Update the GPU state (runs every machine cycle)
 void GPU_update(CPU* cpu, GPU* gpu, Memory* mem) {
-    uint8_t LY = MEM_getByte(mem, REG_LY);
-    uint8_t STAT = MEM_getByte(mem, REG_STAT);
+    uint8_t* IF = &(mem->logicalMemory[REG_IF]);
+    uint8_t* LYC = &(mem->logicalMemory[REG_LYC]);
+    uint8_t* LY = &(mem->logicalMemory[REG_LY]);
+    uint8_t* STAT = &(mem->logicalMemory[REG_STAT]);
 
-    if (LY < 144) {
+    if (*LY < 144) {
         // Cycle through modes 2, 3, 0
         switch (gpu->machineCycleCounter) {
             case 0: // Mode 2
-                MEM_setByte(mem, REG_STAT, (STAT & 0xFC) | 2);
+                *STAT = (*STAT & 0xFC) | 2;
                 break;
 
             case 19: // Mode 3
-                MEM_setByte(mem, REG_STAT, (STAT & 0xFC) | 3);
+                *STAT = (*STAT & 0xFC) | 3;
                 break;
 
             case 61: // Mode 0 (HBlank)
-                MEM_setByte(mem, REG_STAT, (STAT & 0xFC) | 0);
+                *STAT = (*STAT & 0xFC) | 0;
                 updateBackgroundMap(gpu, mem);
-                renderBgScanline(gpu, mem, MEM_getByte(mem, REG_LY));
+                renderBgScanline(gpu, mem, *LY);
                 break;
 
-            case 113: // Reset counter and go to next line
-                MEM_setByte(mem, REG_LY, LY + 1);
-                MEM_setByte(mem, REG_STAT, (STAT & 0xFC) | 2);
+            case 113: // Go to next line
+                ++*LY;
+                *STAT = (*STAT & 0xFC) | 2;
                 break;
 
             default:
                 break;
         }
 
-    } else if (LY == 144) {
+    } else if (*LY == 144) {
         // Mode 1 (VBlank)
-        MEM_setByte(mem, REG_STAT, (STAT & 0xFC) | 1);
+        *STAT = (*STAT & 0xFC) | 1;
         if (gpu->machineCycleCounter == 113) {
             GPU_renderToFrameBuffer(gpu, mem);
-            MEM_setByte(mem, REG_IF, MEM_getByte(mem, REG_IF) | 0x1);
-            MEM_setByte(mem, REG_LY, LY + 1);
+            *IF |= 0x1;
+            ++*LY;
         }
 
-    } else if (LY == 154) {
+    } else if (*LY == 154) {
         // VBlank end
         if (gpu->machineCycleCounter == 113) {
-            MEM_setByte(mem, REG_LY, 0);
+            *LY = 0;
         }
 
     } else {
         if (gpu->machineCycleCounter == 113) {
-            MEM_setByte(mem, REG_LY, LY + 1);
+            ++*LY;
         }
     }
 
     // Check for LYC=LY
-    STAT = MEM_getByte(mem, REG_STAT);
-    if (MEM_getByte(mem, REG_LYC) == MEM_getByte(mem, REG_LY)) {
-        MEM_setByte(mem, REG_STAT, setBit(STAT, 2, 1));
-        MEM_setByte(mem, REG_IF, setBit(MEM_getByte(mem, REG_IF), 1, 1));
+    if (*LYC == *LY) {
+        *STAT = setBit(*STAT, 2, 1);
+        *IF = setBit(*IF, 1, 1);
     } else {
-        MEM_setByte(mem, REG_STAT, setBit(STAT, 2, 0));
+        *STAT = setBit(*STAT, 2, 0);
     }
 
     if (gpu->machineCycleCounter == 113) {
@@ -249,7 +259,7 @@ void GPU_update(CPU* cpu, GPU* gpu, Memory* mem) {
 
 // Generate LCD framebuffer from VRAM
 void GPU_renderToFrameBuffer(GPU* gpu, Memory* mem) {
-    uint8_t LCDC = MEM_getByte(mem, REG_LCDC);
+    uint8_t LCDC = mem->logicalMemory[REG_LCDC];
     if (!getBit(LCDC, 7)) {
         // LCD disabled, return a blank screen
         for (int i = 0; i < (160 * 144 * 4); i += 4) {

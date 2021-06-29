@@ -8,6 +8,7 @@ struct Joypad {
 };
 
 void JOY_init(Joypad* joy);
+void JOY_destroy(Joypad* joy);
 void JOY_update(Joypad* joy, Memory* mem);
 
 #endif

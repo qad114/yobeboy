@@ -25,6 +25,7 @@ struct Cartridge {
 };
 
 void CART_init(Cartridge* cart, Memory* mem);
+void CART_destroy(Cartridge* cart);
 void CART_mbcDispatch(Memory* mem, uint16_t address, uint8_t value);
 
 #endif

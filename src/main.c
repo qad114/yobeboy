@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <SDL2/SDL.h>
 
@@ -36,7 +37,7 @@ int main(int argc, char** argv) {
     GPU_init(gpu);
 
     Timer* timer = malloc(sizeof(*timer)); // freed in quit
-    timer->divCounter = 0;
+    TIMER_init(timer);
 
     Joypad* joy = malloc(sizeof(*joy)); // freed in quit
     JOY_init(joy);
@@ -128,18 +129,12 @@ int quit(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy, int returnC
         free(saveFileName);
     }
 
-    // Free everything
-    free(cpu);
-    free(gpu->backgroundMap);
-    free(gpu->framebuffer);
-    free(gpu);
-    free(mem->cartridge);
-    free(mem->romBanks);
-    free(mem->extRamBanks);
-    free(mem->romPath);
-    free(mem);
-    free(timer);
-    free(joy);
+    // Destroy components
+    CPU_destroy(cpu);
+    GPU_destroy(gpu);
+    MEM_destroy(mem);
+    TIMER_destroy(timer);
+    JOY_destroy(joy);
 
     return returnCode;
 }

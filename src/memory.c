@@ -12,9 +12,10 @@
 
 void MEM_init(Memory* mem) {
     // Zero out memory
-    for (int i = 0; i < 0x10000; ++i) {
+    /*for (int i = 0; i < 0x10000; ++i) {
         mem->logicalMemory[i] = 0;
-    }
+    }*/
+    memset(mem->logicalMemory, 0, 0x10000);
 
     // Set special registers
     mem->ioRegisters[REG_NR10 - OFFSET_IOREGISTERS] = 0x80;
@@ -42,6 +43,19 @@ void MEM_init(Memory* mem) {
     mem->dmaAddressUpper = 0;
     mem->dmaInProgress = 0;
     mem->dmaPosition = 0;
+}
+
+void MEM_destroy(Memory* mem) {
+    free(mem->cartridge);
+    mem->cartridge = NULL;
+    free(mem->romBanks);
+    mem->romBanks = NULL;
+    free(mem->extRamBanks);
+    mem->extRamBanks = NULL;
+    free(mem->romPath);
+    mem->romPath = NULL;
+    free(mem);
+    mem = NULL;
 }
 
 uint8_t MEM_getByte(Memory* mem, uint16_t address) {
@@ -157,11 +171,7 @@ void MEM_loadROM(Memory* mem, const char* path) {
 
     // Handle saving if MBC includes battery
     uint8_t mbcCode = mem->romBank0[0x0147];
-    if (mbcCode == 0x03 || mbcCode == 0x06 || mbcCode == 0x09 
-        || mbcCode == 0x0D || mbcCode == 0x0F || mbcCode == 0x10 
-        || mbcCode == 0x13 || mbcCode == 0x1B || mbcCode == 0x1E 
-        || mbcCode == 0x22
-    ) {
+    if (strchr((const char []){0x03, 0x06, 0x09, 0x0D, 0x0F, 0x10, 0x13, 0x1B, 0x1E, 0x22, '\0'}, mbcCode)) {
         mem->battery = 1;
         mem->romPath = malloc(strlen(path) + 1); // freed in main.c:quit
         strcpy(mem->romPath, path);

@@ -26,6 +26,11 @@ void CART_init(Cartridge* cart, Memory* mem) {
     cart->RAMB = 0;
 }
 
+void CART_destroy(Cartridge* cart) {
+    free(cart);
+    cart = NULL;
+}
+
 static void MBC1(Memory* mem, uint16_t address, uint8_t value);
 static void MBC1_RAM(Memory* mem, uint16_t address, uint8_t value);
 static void MBC1_RAM_BATTERY(Memory* mem, uint16_t address, uint8_t value);

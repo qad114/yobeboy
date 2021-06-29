@@ -9,8 +9,20 @@
 static void updateDiv(Memory* mem, Timer* timer);
 static void updateTima(Memory* mem, Timer* timer);
 
+void TIMER_init(Timer* timer) {
+    timer->divCounter = 0;
+}
+
+void TIMER_destroy(Timer* timer) {
+    free(timer);
+    timer = NULL;
+}
+
 // Update the timer and divider registers
 void TIMER_update(CPU* cpu, Memory* mem, Timer* timer) {
+    uint8_t* TIMA = &(mem->logicalMemory[REG_TIMA]);
+    uint8_t TAC = mem->logicalMemory[REG_TAC];
+
     // Update DIV every 256 machine cycles
     if (timer->divCounter == 64) {//256) {
         timer->divCounter = 0;
@@ -20,14 +32,14 @@ void TIMER_update(CPU* cpu, Memory* mem, Timer* timer) {
     }
 
     // Update TIMA
-    if (!getBit(MEM_getByte(mem, REG_TAC), 2)) {
+    if (!getBit(TAC, 2)) {
         timer->timaCounter = 0;
-        MEM_setByte(mem, REG_TIMA, 0);
+        *TIMA = 0;
         return;
     }
 
     int interval = 0;
-    switch (MEM_getByte(mem, REG_TAC) & 0x3) {
+    switch (TAC & 0x3) {
         case 0: interval = 256; break;
         case 1: interval = 4; break;
         case 2: interval = 16; break;
@@ -44,19 +56,19 @@ void TIMER_update(CPU* cpu, Memory* mem, Timer* timer) {
 }
 
 static void updateDiv(Memory* mem, Timer* timer) {
-    uint8_t DIV = MEM_getByte(mem, REG_DIV);
-    if (DIV == 0) {
+    uint8_t* DIV = &(mem->logicalMemory[REG_DIV]);
+    if (*DIV == 0) {
         timer->divCounter = 0;
     }
-    MEM_forceSetByte(mem, REG_DIV, DIV + 1);
+    ++*DIV;
 }
 
 static void updateTima(Memory* mem, Timer* timer) {
-    uint8_t TIMA = MEM_getByte(mem, REG_TIMA);
-    if (TIMA == 0xFF) {
-        MEM_setByte(mem, REG_TIMA, MEM_getByte(mem, REG_TMA));
-        MEM_setByte(mem, REG_IF, MEM_getByte(mem, REG_IF) | 0x4);
+    uint8_t* TIMA = &(mem->logicalMemory[REG_TIMA]);
+    if (*TIMA == 0xFF) {
+        *TIMA = mem->logicalMemory[REG_TMA];
+        mem->logicalMemory[REG_IF] |= 0x4;
     } else {
-        MEM_forceSetByte(mem, REG_TIMA, TIMA + 1);
+        ++*TIMA;
     }
 }

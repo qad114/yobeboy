@@ -20,6 +20,7 @@ struct GPU {
 };
 
 void GPU_init(GPU* gpu);
+void GPU_destroy(GPU* gpu);
 void GPU_update(CPU* cpu, GPU* gpu, Memory* mem);
 void GPU_renderToFrameBuffer(GPU* gpu, Memory* mem);
 

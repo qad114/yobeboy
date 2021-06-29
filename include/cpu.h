@@ -71,6 +71,7 @@ void CPU_setFlagH(CPU* cpu, int value);
 void CPU_setFlagC(CPU* cpu, int value);
 
 void CPU_init(CPU* cpu);
+void CPU_destroy(CPU* cpu);
 int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy);
 
 #endif

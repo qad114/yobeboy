@@ -38,6 +38,11 @@ void CPU_init(CPU* cpu) {
     cpu->opcode = 0;
 }
 
+void CPU_destroy(CPU* cpu) {
+    free(cpu);
+    cpu = NULL;
+}
+
 int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy) {
     // Fetch the next byte/opcode
     cpu->opcode = MEM_getByte(mem, cpu->PC);
@@ -2518,43 +2523,41 @@ int CPU_emulateCycle(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy)
     }
 
     // Handle interrupts and then reset them
-    uint8_t interruptEnable = MEM_getByte(mem, REG_IE);
-    uint8_t interruptFlag = MEM_getByte(mem, REG_IF);
+    uint8_t IE = mem->logicalMemory[REG_IE];
+    uint8_t* IF = &(mem->logicalMemory[REG_IF]);
     if (cpu->IME) {
-        if (getBit(interruptEnable, 0) && getBit(interruptFlag, 0)) {
+        if (getBit(IE, 0) && getBit(*IF, 0)) {
             // V-Blank
             cpu->IME = 0;
-            MEM_setByte(mem, REG_IF, setBit(interruptFlag, 0, 0));
+            *IF = setBit(*IF, 0, 0);
             MEM_pushToStack(mem, &(cpu->SP), cpu->PC);
             cpu->PC = 0x0040;
 
-        } else if (getBit(interruptEnable, 1) && getBit(interruptFlag, 1)) {
+        } else if (getBit(IE, 1) && getBit(*IF, 1)) {
             // LCD STAT
             cpu->IME = 0;
-            MEM_setByte(mem, REG_IF, setBit(interruptFlag, 1, 0));
-            //printf("HANDLING STAT INTERRUPT\n");
+            *IF = setBit(*IF, 1, 0);
             MEM_pushToStack(mem, &(cpu->SP), cpu->PC);
             cpu->PC = 0x0048;
 
-        } else if (getBit(interruptEnable, 2) && getBit(interruptFlag, 2)) {
+        } else if (getBit(IE, 2) && getBit(*IF, 2)) {
             // Timer
             cpu->IME = 0;
-            MEM_setByte(mem, REG_IF, setBit(interruptFlag, 2, 0));
-            //printf("HANDLING TIMER INTERRUPT\n");
+            *IF = setBit(*IF, 2, 0);
             MEM_pushToStack(mem, &(cpu->SP), cpu->PC);
             cpu->PC = 0x0050;
 
-        } else if (getBit(interruptEnable, 3) && getBit(interruptFlag, 3)) {
+        } else if (getBit(IE, 3) && getBit(*IF, 3)) {
             // Serial
             cpu->IME = 0;
-            MEM_setByte(mem, REG_IF, setBit(interruptFlag, 3, 0));
+            *IF = setBit(*IF, 3, 0);
             MEM_pushToStack(mem, &(cpu->SP), cpu->PC);
             cpu->PC = 0x0058;
 
-        } else if (getBit(interruptEnable, 4) && getBit(interruptFlag, 4)) {
+        } else if (getBit(IE, 4) && getBit(*IF, 4)) {
             // Joypad
             cpu->IME = 0;
-            MEM_setByte(mem, REG_IF, setBit(interruptFlag, 4, 0));
+            *IF = setBit(*IF, 4, 0);
             MEM_pushToStack(mem, &(cpu->SP), cpu->PC);
             cpu->PC = 0x0060;
         }
