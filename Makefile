@@ -1,4 +1,4 @@
-IDIR=include
+IDIR=src
 SDIR=src
 ODIR=build
 CC=gcc
