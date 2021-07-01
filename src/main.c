@@ -5,6 +5,8 @@
 
 #include <SDL2/SDL.h>
 
+#include "common/bitwise.h"
+#include "audio.h"
 #include "constants.h"
 #include "cpu.h"
 #include "gpu.h"
@@ -12,7 +14,7 @@
 #include "memory.h"
 #include "timer.h"
 
-int quit(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy, int returnCode);
+int quit(CPU* cpu, GPU* gpu, Memory* mem, Audio* audio, Timer* timer, Joypad* joy, int returnCode);
 
 int main(int argc, char** argv) {
     if (argc != 2) {
@@ -42,6 +44,9 @@ int main(int argc, char** argv) {
     Joypad* joy = malloc(sizeof(*joy)); // freed in quit
     JOY_init(joy);
 
+    Audio* audio = malloc(sizeof(*audio)); // freed in quit
+    AUD_init(audio, 44100);
+
     #ifndef DISABLE_GRAPHICS
     // Init graphics
     SDL_Init(SDL_INIT_EVERYTHING);
@@ -52,16 +57,18 @@ int main(int argc, char** argv) {
     #endif
 
     SDL_Event event;
-    uint32_t startTime = SDL_GetTicks();
+    uint64_t startTime = SDL_GetPerformanceCounter();
+
     while (1) {
         int res = CPU_emulateCycle(cpu, gpu, mem, timer, joy);
         if (!res) {
-            return quit(cpu, gpu, mem, timer, joy, 1);
+            return quit(cpu, gpu, mem, audio, timer, joy, 1);
         }
         GPU_update(cpu, gpu, mem);
         TIMER_update(cpu, mem, timer);
         MEM_dmaUpdate(mem);
         JOY_update(joy, mem);
+        AUD_update(audio, mem);
 
         #ifndef DISABLE_GRAPHICS
         if (gpu->fbUpdated) {
@@ -69,7 +76,7 @@ int main(int argc, char** argv) {
             while (SDL_PollEvent(&event)) {
                 switch (event.type) {
                     case SDL_QUIT:
-                        return quit(cpu, gpu, mem, timer, joy, 0);
+                        return quit(cpu, gpu, mem, audio, timer, joy, 0);
 
                     case SDL_KEYDOWN:
                         switch (event.key.keysym.sym) {
@@ -107,16 +114,16 @@ int main(int argc, char** argv) {
             gpu->fbUpdated = false;
 
             // Maintain 60fps
-            uint32_t elapsedTime = SDL_GetTicks() - startTime;
-            uint32_t targetTime = 1000 / 60;
-            if (elapsedTime <= targetTime) SDL_Delay(targetTime - elapsedTime);
-            startTime = SDL_GetTicks();
+            double targetTime = 1.0 / 60.0;
+            while (((SDL_GetPerformanceCounter() - startTime) / (float) SDL_GetPerformanceFrequency()) < targetTime);
+            printf("FPS %.2f\r", 1.0 / ((SDL_GetPerformanceCounter() - startTime) / (float) SDL_GetPerformanceFrequency()));
+            startTime = SDL_GetPerformanceCounter();
         }
         #endif
     }
 }
 
-int quit(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy, int returnCode) {
+int quit(CPU* cpu, GPU* gpu, Memory* mem, Audio* audio, Timer* timer, Joypad* joy, int returnCode) {
     // Dump external RAM to save
     if (mem->battery) {
         char* saveFileName = malloc(strlen(mem->romPath) + 5); // freed at the end of this block
@@ -133,6 +140,7 @@ int quit(CPU* cpu, GPU* gpu, Memory* mem, Timer* timer, Joypad* joy, int returnC
     CPU_destroy(cpu);
     GPU_destroy(gpu);
     MEM_destroy(mem);
+    AUD_destroy(audio);
     TIMER_destroy(timer);
     JOY_destroy(joy);
 

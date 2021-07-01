@@ -1,5 +1,5 @@
-#ifndef MBC_H
-#define MBC_H
+#ifndef CARTRIDGE_H
+#define CARTRIDGE_H
 
 typedef struct Cartridge Cartridge;
 
